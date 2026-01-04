@@ -97,6 +97,7 @@ def decode_jwt(token: str) -> TokenPayload:
                 "verify_signature": True,
                 "verify_exp": True,
                 "verify_iat": True,
+                "verify_aud": False,  # Don't verify audience - Supabase tokens have varying audiences
                 "require": ["exp", "iat", "sub"],
             },
         )

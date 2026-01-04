@@ -1,0 +1,90 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "autopilot-mkt-backend"
+version = "0.1.0"
+description = "Agent-led robotics procurement platform backend"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "Proprietary"}
+authors = [
+    {name = "Moonlight Technologies"}
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Framework :: FastAPI",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+    "fastapi>=0.109.0",
+    "uvicorn[standard]>=0.27.0",
+    "pydantic>=2.5.0",
+    "pydantic-settings>=2.1.0",
+    "python-dotenv>=1.0.0",
+    "supabase>=2.0.0",
+    "httpx>=0.26.0",
+    "python-jose[cryptography]>=3.3.0",
+    "openai>=1.0.0",
+    "pinecone-client>=3.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.1.0",
+    "ruff>=0.1.0",
+    "mypy>=1.7.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # pyflakes
+    "I",      # isort
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "UP",     # pyupgrade
+]
+ignore = [
+    "E501",   # line too long (handled by formatter)
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["src"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+warn_unused_ignores = true
+disallow_untyped_defs = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = [
+    "supabase.*",
+    "pinecone.*",
+]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"

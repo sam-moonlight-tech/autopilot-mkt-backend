@@ -1,0 +1,29 @@
+Collecting pinecone
+  Downloading pinecone-8.0.0-py3-none-any.whl.metadata (11 kB)
+Requirement already satisfied: certifi>=2019.11.17 in ./venv/lib/python3.13/site-packages (from pinecone) (2026.1.4)
+Collecting orjson>=3.0.0 (from pinecone)
+  Downloading orjson-3.11.5-cp313-cp313-macosx_15_0_arm64.whl.metadata (41 kB)
+Collecting pinecone-plugin-assistant<4.0.0,>=3.0.1 (from pinecone)
+  Downloading pinecone_plugin_assistant-3.0.1-py3-none-any.whl.metadata (30 kB)
+Requirement already satisfied: pinecone-plugin-interface<0.1.0,>=0.0.7 in ./venv/lib/python3.13/site-packages (from pinecone) (0.0.7)
+Requirement already satisfied: python-dateutil>=2.5.3 in ./venv/lib/python3.13/site-packages (from pinecone) (2.9.0.post0)
+Requirement already satisfied: typing-extensions>=3.7.4 in ./venv/lib/python3.13/site-packages (from pinecone) (4.15.0)
+Requirement already satisfied: urllib3>=1.26.5 in ./venv/lib/python3.13/site-packages (from pinecone) (2.6.2)
+Collecting packaging<25.0,>=24.2 (from pinecone-plugin-assistant<4.0.0,>=3.0.1->pinecone)
+  Downloading packaging-24.2-py3-none-any.whl.metadata (3.2 kB)
+Requirement already satisfied: requests<3.0.0,>=2.32.3 in ./venv/lib/python3.13/site-packages (from pinecone-plugin-assistant<4.0.0,>=3.0.1->pinecone) (2.32.5)
+Requirement already satisfied: charset_normalizer<4,>=2 in ./venv/lib/python3.13/site-packages (from requests<3.0.0,>=2.32.3->pinecone-plugin-assistant<4.0.0,>=3.0.1->pinecone) (3.4.4)
+Requirement already satisfied: idna<4,>=2.5 in ./venv/lib/python3.13/site-packages (from requests<3.0.0,>=2.32.3->pinecone-plugin-assistant<4.0.0,>=3.0.1->pinecone) (3.11)
+Requirement already satisfied: six>=1.5 in ./venv/lib/python3.13/site-packages (from python-dateutil>=2.5.3->pinecone) (1.17.0)
+Downloading pinecone-8.0.0-py3-none-any.whl (745 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 745.9/745.9 kB 15.4 MB/s  0:00:00
+Downloading pinecone_plugin_assistant-3.0.1-py3-none-any.whl (280 kB)
+Downloading packaging-24.2-py3-none-any.whl (65 kB)
+Downloading orjson-3.11.5-cp313-cp313-macosx_15_0_arm64.whl (129 kB)
+Installing collected packages: packaging, orjson, pinecone-plugin-assistant, pinecone
+  Attempting uninstall: packaging
+    Found existing installation: packaging 25.0
+    Uninstalling packaging-25.0:
+      Successfully uninstalled packaging-25.0
+
+Successfully installed orjson-3.11.5 packaging-24.2 pinecone-8.0.0 pinecone-plugin-assistant-3.0.1

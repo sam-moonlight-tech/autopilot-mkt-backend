@@ -64,37 +64,59 @@ class ConversationService:
             self.client.table("conversations")
             .select("*")
             .eq("id", str(conversation_id))
-            .single()
+            .maybe_single()
             .execute()
         )
 
-        return response.data if response.data else None
+        return response.data if response and response.data else None
 
-    async def can_access(self, conversation_id: UUID, profile_id: UUID) -> bool:
-        """Check if a user can access a conversation.
+    async def can_access(
+        self,
+        conversation_id: UUID,
+        profile_id: UUID | None = None,
+        session_id: UUID | None = None,
+    ) -> bool:
+        """Check if a user or session can access a conversation.
 
         User can access if they are the owner or a member of the company.
+        Session can access if it owns the conversation.
 
         Args:
             conversation_id: The conversation's UUID.
-            profile_id: The user's profile ID.
+            profile_id: The user's profile ID (for authenticated users).
+            session_id: The session's UUID (for anonymous users).
 
         Returns:
-            bool: True if user can access the conversation.
+            bool: True if user/session can access the conversation.
         """
         conversation = await self.get_conversation(conversation_id)
         if not conversation:
             return False
 
-        # Check if user is owner
-        if conversation["user_id"] == str(profile_id):
+        # Check session ownership first (for anonymous users)
+        if session_id and conversation.get("session_id") == str(session_id):
             return True
 
-        # Check if conversation has a company and user is member
-        if conversation.get("company_id"):
-            return await self.company_service.is_member(
-                UUID(conversation["company_id"]), profile_id
+        # Check if user is owner (for authenticated users)
+        if profile_id:
+            # Get user_id from profile to compare with conversation.user_id
+            profile_response = (
+                self.client.table("profiles")
+                .select("user_id")
+                .eq("id", str(profile_id))
+                .maybe_single()
+                .execute()
             )
+            if profile_response.data:
+                user_id = profile_response.data["user_id"]
+                if conversation.get("user_id") == str(user_id):
+                    return True
+
+            # Check if conversation has a company and user is member
+            if conversation.get("company_id"):
+                return await self.company_service.is_member(
+                    UUID(conversation["company_id"]), profile_id
+                )
 
         return False
 
@@ -338,3 +360,116 @@ class ConversationService:
         # Reverse to get oldest first (chronological order)
         messages = response.data or []
         return list(reversed(messages))
+
+    # Session-owned conversation operations
+
+    async def create_conversation_for_session(
+        self,
+        session_id: UUID,
+        title: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Create a new conversation owned by a session (anonymous user).
+
+        Args:
+            session_id: The session ID of the anonymous user.
+            title: Optional conversation title.
+            metadata: Optional conversation metadata.
+
+        Returns:
+            dict: The created conversation data.
+        """
+        conversation_data = {
+            "session_id": str(session_id),
+            "user_id": None,  # No user for session-owned conversation
+            "title": title or self.DEFAULT_TITLE,
+            "phase": ConversationPhase.DISCOVERY.value,
+            "metadata": metadata or {},
+        }
+
+        response = self.client.table("conversations").insert(conversation_data).execute()
+
+        return response.data[0]
+
+    async def can_access_by_session(
+        self,
+        conversation_id: UUID,
+        session_id: UUID,
+    ) -> bool:
+        """Check if a session can access a conversation.
+
+        Args:
+            conversation_id: The conversation's UUID.
+            session_id: The session's UUID.
+
+        Returns:
+            bool: True if session owns the conversation.
+        """
+        conversation = await self.get_conversation(conversation_id)
+        if not conversation:
+            return False
+
+        # Check if session is owner
+        return conversation.get("session_id") == str(session_id)
+
+    async def transfer_to_profile(
+        self,
+        conversation_id: UUID,
+        profile_id: UUID,
+    ) -> dict[str, Any] | None:
+        """Transfer conversation ownership from session to user profile.
+
+        Called during session claim to move conversation to authenticated user.
+
+        Args:
+            conversation_id: The conversation's UUID.
+            profile_id: The profile UUID to transfer to.
+
+        Returns:
+            dict | None: Updated conversation or None if not found.
+        """
+        # Get user_id from profile
+        profile_response = (
+            self.client.table("profiles")
+            .select("user_id")
+            .eq("id", str(profile_id))
+            .maybe_single()
+            .execute()
+        )
+
+        if not profile_response.data:
+            return None
+
+        user_id = profile_response.data["user_id"]
+
+        # Update conversation to be owned by user instead of session
+        response = (
+            self.client.table("conversations")
+            .update({"user_id": str(user_id), "session_id": None})
+            .eq("id", str(conversation_id))
+            .execute()
+        )
+
+        return response.data[0] if response.data else None
+
+    async def get_session_conversations(
+        self,
+        session_id: UUID,
+    ) -> list[dict[str, Any]]:
+        """Get all conversations owned by a session.
+
+        Args:
+            session_id: The session's UUID.
+
+        Returns:
+            list[dict]: List of conversation data.
+        """
+        response = (
+            self.client.table("conversations")
+            .select("*")
+            .eq("session_id", str(session_id))
+            .order("created_at", desc=True)
+            .execute()
+        )
+
+        return response.data or []

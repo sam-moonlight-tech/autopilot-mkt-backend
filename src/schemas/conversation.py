@@ -35,7 +35,7 @@ class ConversationResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID = Field(description="Conversation unique identifier")
-    user_id: UUID = Field(description="Owner profile ID")
+    user_id: UUID | None = Field(default=None, description="Owner profile ID (None for session-owned)")
     company_id: UUID | None = Field(default=None, description="Associated company ID")
     title: str = Field(description="Conversation title")
     phase: ConversationPhase = Field(description="Current conversation phase")

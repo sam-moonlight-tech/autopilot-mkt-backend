@@ -96,6 +96,30 @@ The conversations system enables the Autopilot platform by providing:
 3. WHEN the agent determines phase change THEN the system SHALL accept phase updates via metadata
 4. WHEN listing conversations THEN the system SHALL include current phase
 
+### Requirement 8: Session-Owned Conversations (NEW)
+
+**User Story:** As an anonymous user, I want to chat with the agent without signing up, so that I can explore the platform before committing.
+
+#### Acceptance Criteria
+
+1. WHEN an anonymous user creates a conversation THEN the system SHALL link it to their session_id
+2. WHEN a session-owned conversation exists THEN the system SHALL make user_id nullable
+3. WHEN accessing a conversation THEN the system SHALL verify either user_id or session_id ownership
+4. IF a session is claimed THEN the system SHALL transfer conversation ownership to the profile
+5. WHEN ownership transfers THEN the system SHALL update user_id and clear session_id
+6. WHEN listing conversations THEN the system SHALL include session-owned conversations for valid sessions
+
+### Requirement 9: Phase Enum Alignment (UPDATE)
+
+**User Story:** As a developer, I want consistent phase values between frontend and backend, so that the user journey is seamless.
+
+#### Acceptance Criteria
+
+1. WHEN storing phase THEN the system SHALL use values: 'discovery', 'roi', 'greenlight'
+2. WHEN phase was previously 'selection' or 'completed' THEN the system SHALL migrate to 'greenlight'
+3. WHEN validating phase input THEN the system SHALL reject 'selection' and 'completed' values
+4. WHEN agent prompts reference phases THEN the system SHALL use 'greenlight' for final phase
+
 ## Non-Functional Requirements
 
 ### Performance

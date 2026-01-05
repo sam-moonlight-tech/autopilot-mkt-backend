@@ -9,8 +9,20 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from src.api.middleware.error_handler import error_handler_middleware
-from src.api.routes import companies, conversations, health, invitations, products, profiles
+from src.api.routes import (
+    companies,
+    conversations,
+    discovery,
+    health,
+    invitations,
+    profiles,
+    robots,
+    sessions,
+    webhooks,
+)
+from src.api.routes.checkout import orders_router, router as checkout_router
 from src.core.config import get_settings
+from src.core.stripe import configure_stripe
 
 # Configure logging
 logging.basicConfig(
@@ -35,6 +47,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Startup
     settings = get_settings()
     logger.info("Starting %s in %s mode", settings.app_name, settings.app_env)
+
+    # Configure Stripe SDK
+    configure_stripe()
+    logger.info("Stripe SDK configured")
+
     yield
     # Shutdown
     logger.info("Shutting down %s", settings.app_name)
@@ -70,22 +87,34 @@ def create_app() -> FastAPI:
     # Add error handler middleware
     app.add_middleware(BaseHTTPMiddleware, dispatch=error_handler_middleware)
 
-    # Mount health routes at root level (no prefix)
+    # Mount health routes at root level (no prefix)                                                                                          
     app.include_router(health.router)
 
     # Create API v1 router for versioned endpoints
     api_v1_router = APIRouter(prefix="/api/v1")
+
 
     # Profile and company routes
     api_v1_router.include_router(profiles.router)
     api_v1_router.include_router(companies.router)
     api_v1_router.include_router(invitations.router)
 
+    # Session and discovery routes
+    api_v1_router.include_router(sessions.router)
+    api_v1_router.include_router(discovery.router)
+
     # Conversation routes
     api_v1_router.include_router(conversations.router)
 
-    # Product routes
-    api_v1_router.include_router(products.router)
+    # Robot catalog routes
+    api_v1_router.include_router(robots.router)
+
+    # Checkout and orders routes
+    api_v1_router.include_router(checkout_router)
+    api_v1_router.include_router(orders_router)
+
+    # Webhook routes
+    api_v1_router.include_router(webhooks.router)
 
     app.include_router(api_v1_router)
 

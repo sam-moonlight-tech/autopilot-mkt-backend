@@ -71,11 +71,11 @@ class ProfileService:
             self.client.table("profiles")
             .select("*")
             .eq("user_id", str(user_id))
-            .single()
+            .maybe_single()
             .execute()
         )
 
-        return response.data if response.data else None
+        return response.data if response and response.data else None
 
     async def get_profile_by_id(self, profile_id: UUID) -> dict[str, Any] | None:
         """Get a profile by profile ID.
@@ -90,11 +90,11 @@ class ProfileService:
             self.client.table("profiles")
             .select("*")
             .eq("id", str(profile_id))
-            .single()
+            .maybe_single()
             .execute()
         )
 
-        return response.data if response.data else None
+        return response.data if response and response.data else None
 
     async def update_profile(
         self,

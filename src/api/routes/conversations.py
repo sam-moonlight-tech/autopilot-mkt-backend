@@ -4,7 +4,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, status
 
-from src.api.deps import CurrentUser
+from src.api.deps import AuthContext, CurrentUser, DualAuth
 from src.schemas.conversation import (
     ConversationCreate,
     ConversationListResponse,
@@ -18,6 +18,7 @@ from src.schemas.message import (
 from src.services.agent_service import AgentService
 from src.services.conversation_service import ConversationService
 from src.services.profile_service import ProfileService
+from src.services.session_service import SessionService
 
 router = APIRouter(prefix="/conversations", tags=["conversations"])
 
@@ -29,13 +30,39 @@ async def _get_user_profile_id(user: CurrentUser) -> UUID:
     return UUID(profile["id"])
 
 
-async def _check_conversation_access(conversation_id: UUID, profile_id: UUID) -> None:
-    """Check if user can access the conversation."""
+async def _check_conversation_access(
+    conversation_id: UUID,
+    auth: AuthContext,
+) -> None:
+    """Check if user or session can access the conversation."""
     service = ConversationService()
-    if not await service.can_access(conversation_id, profile_id):
+
+    if auth.is_authenticated and auth.user:
+        # Get profile ID for authenticated user
+        profile_service = ProfileService()
+        profile = await profile_service.get_or_create_profile(
+            auth.user.user_id, auth.user.email
+        )
+        if not await service.can_access(
+            conversation_id, profile_id=UUID(profile["id"])
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You do not have access to this conversation",
+            )
+    elif auth.session:
+        # Check session ownership
+        if not await service.can_access(
+            conversation_id, session_id=auth.session.session_id
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You do not have access to this conversation",
+            )
+    else:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You do not have access to this conversation",
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required",
         )
 
 
@@ -47,28 +74,50 @@ async def _check_conversation_access(conversation_id: UUID, profile_id: UUID) ->
     response_model=ConversationResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create a conversation",
-    description="Creates a new conversation for the authenticated user.",
+    description="Creates a new conversation for authenticated user or anonymous session.",
 )
 async def create_conversation(
-    user: CurrentUser,
+    auth: DualAuth,
     data: ConversationCreate | None = None,
 ) -> ConversationResponse:
     """Create a new conversation.
 
+    Works for both authenticated users and anonymous sessions.
+
     Args:
-        user: The authenticated user context.
+        auth: Dual auth context (user or session).
         data: Optional conversation creation data.
 
     Returns:
         ConversationResponse: The created conversation.
     """
-    profile_id = await _get_user_profile_id(user)
     service = ConversationService()
-    conversation = await service.create_conversation(profile_id, data)
+    session_service = SessionService()
+
+    if auth.is_authenticated and auth.user:
+        # Authenticated user - create user-owned conversation
+        profile_id = await _get_user_profile_id(auth.user)
+        conversation = await service.create_conversation(profile_id, data)
+    elif auth.session:
+        # Anonymous session - create session-owned conversation
+        conversation = await service.create_conversation_for_session(
+            session_id=auth.session.session_id,
+            title=data.title if data else None,
+            metadata=data.metadata if data else None,
+        )
+        # Link conversation to session
+        await session_service.set_conversation(
+            auth.session.session_id, UUID(conversation["id"])
+        )
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required",
+        )
 
     return ConversationResponse(
         id=conversation["id"],
-        user_id=conversation["user_id"],
+        user_id=conversation.get("user_id"),
         company_id=conversation.get("company_id"),
         title=conversation["title"],
         phase=conversation["phase"],
@@ -128,13 +177,13 @@ async def list_conversations(
 )
 async def get_conversation(
     conversation_id: UUID,
-    user: CurrentUser,
+    auth: DualAuth,
 ) -> ConversationResponse:
     """Get a conversation by ID.
 
     Args:
         conversation_id: The conversation's UUID.
-        user: The authenticated user context.
+        auth: Dual auth context (user or session).
 
     Returns:
         ConversationResponse: The conversation.
@@ -142,7 +191,6 @@ async def get_conversation(
     Raises:
         HTTPException: 404 if not found, 403 if no access.
     """
-    profile_id = await _get_user_profile_id(user)
     service = ConversationService()
 
     conversation = await service.get_conversation(conversation_id)
@@ -152,7 +200,7 @@ async def get_conversation(
             detail="Conversation not found",
         )
 
-    await _check_conversation_access(conversation_id, profile_id)
+    await _check_conversation_access(conversation_id, auth)
 
     # Get message count
     messages, _, _ = await service.get_messages(conversation_id, limit=1)
@@ -160,7 +208,7 @@ async def get_conversation(
 
     return ConversationResponse(
         id=conversation["id"],
-        user_id=conversation["user_id"],
+        user_id=conversation.get("user_id"),
         company_id=conversation.get("company_id"),
         title=conversation["title"],
         phase=conversation["phase"],
@@ -224,14 +272,16 @@ async def delete_conversation(
 async def send_message(
     conversation_id: UUID,
     data: MessageCreate,
-    user: CurrentUser,
+    auth: DualAuth,
 ) -> MessageWithAgentResponse:
     """Send a message to a conversation and get agent response.
+
+    Works for both authenticated users and anonymous sessions.
 
     Args:
         conversation_id: The conversation's UUID.
         data: Message content.
-        user: The authenticated user context.
+        auth: Dual auth context (user or session).
 
     Returns:
         MessageWithAgentResponse: Both user and agent messages.
@@ -239,8 +289,7 @@ async def send_message(
     Raises:
         HTTPException: 404 if not found, 403 if no access.
     """
-    profile_id = await _get_user_profile_id(user)
-    await _check_conversation_access(conversation_id, profile_id)
+    await _check_conversation_access(conversation_id, auth)
 
     agent_service = AgentService()
     user_message, agent_message = await agent_service.generate_response(
@@ -263,15 +312,17 @@ async def send_message(
 )
 async def list_messages(
     conversation_id: UUID,
-    user: CurrentUser,
+    auth: DualAuth,
     cursor: str | None = Query(default=None, description="Pagination cursor"),
     limit: int = Query(default=50, ge=1, le=100, description="Results per page"),
 ) -> MessageListResponse:
     """List messages in a conversation.
 
+    Works for both authenticated users and anonymous sessions.
+
     Args:
         conversation_id: The conversation's UUID.
-        user: The authenticated user context.
+        auth: Dual auth context (user or session).
         cursor: Pagination cursor.
         limit: Maximum results per page.
 
@@ -281,8 +332,7 @@ async def list_messages(
     Raises:
         HTTPException: 403 if no access.
     """
-    profile_id = await _get_user_profile_id(user)
-    await _check_conversation_access(conversation_id, profile_id)
+    await _check_conversation_access(conversation_id, auth)
 
     service = ConversationService()
     messages, next_cursor, has_more = await service.get_messages(

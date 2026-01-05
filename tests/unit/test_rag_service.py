@@ -14,76 +14,82 @@ class TestBuildEmbeddingText:
     def test_build_embedding_text_basic(self) -> None:
         """Test building embedding text with basic fields."""
         service = RAGService()
-        product_data = {
-            "name": "UR10e Collaborative Robot",
-            "manufacturer": "Universal Robots",
-            "category": "collaborative_robot",
-            "description": "Versatile cobot for heavy-duty applications.",
+        robot_data = {
+            "name": "Pudu CC1 Pro",
+            "category": "Premium Combo",
+            "best_for": "Indoor courts, wet cleaning",
         }
 
-        result = service.build_embedding_text(product_data)
+        result = service.build_embedding_text(robot_data)
 
-        assert "Product: UR10e Collaborative Robot" in result
-        assert "Manufacturer: Universal Robots" in result
-        assert "Category: Collaborative Robot" in result
-        assert "Description: Versatile cobot for heavy-duty applications." in result
+        assert "Robot: Pudu CC1 Pro" in result
+        assert "Category: Premium Combo" in result
+        assert "Best for: Indoor courts, wet cleaning" in result
 
-    def test_build_embedding_text_with_specs(self) -> None:
-        """Test building embedding text with specifications."""
+    def test_build_embedding_text_with_modes_and_surfaces(self) -> None:
+        """Test building embedding text with modes and surfaces."""
         service = RAGService()
-        product_data = {
+        robot_data = {
             "name": "Test Robot",
-            "specs": {
-                "payload_kg": 10,
-                "reach_mm": 1300,
-            },
+            "modes": ["Vacuum", "Wet Scrub", "Dry Sweep"],
+            "surfaces": ["CushionX", "Asphalt", "Acrylic"],
         }
 
-        result = service.build_embedding_text(product_data)
+        result = service.build_embedding_text(robot_data)
 
-        assert "Product: Test Robot" in result
-        assert "Specifications:" in result
-        assert "Payload Kg: 10" in result
-        assert "Reach Mm: 1300" in result
+        assert "Robot: Test Robot" in result
+        assert "Cleaning modes: Vacuum, Wet Scrub, Dry Sweep" in result
+        assert "Surfaces: CushionX, Asphalt, Acrylic" in result
 
     def test_build_embedding_text_with_pricing(self) -> None:
         """Test building embedding text with pricing information."""
         service = RAGService()
-        product_data = {
+        robot_data = {
             "name": "Test Robot",
-            "pricing": {
-                "base_price_usd": 45000,
-                "installation_usd": 5000,
-            },
+            "monthly_lease": 1200.00,
+            "purchase_price": 28000.00,
         }
 
-        result = service.build_embedding_text(product_data)
+        result = service.build_embedding_text(robot_data)
 
-        assert "Product: Test Robot" in result
-        assert "Pricing:" in result
-        assert "$45,000" in result
-        assert "$5,000" in result
+        assert "Robot: Test Robot" in result
+        assert "Monthly lease: $1,200" in result
+        assert "Purchase price: $28,000" in result
 
     def test_build_embedding_text_empty_data(self) -> None:
         """Test building embedding text with empty data."""
         service = RAGService()
-        product_data = {}
+        robot_data = {}
 
-        result = service.build_embedding_text(product_data)
+        result = service.build_embedding_text(robot_data)
 
         assert result == ""
 
-    def test_build_embedding_text_with_model_number(self) -> None:
-        """Test building embedding text with model number."""
+    def test_build_embedding_text_with_key_reasons_and_specs(self) -> None:
+        """Test building embedding text with key reasons and specs."""
         service = RAGService()
-        product_data = {
-            "name": "UR10e",
-            "model_number": "UR10e-V2",
+        robot_data = {
+            "name": "Test Robot",
+            "key_reasons": ["High throughput", "Low maintenance"],
+            "specs": ["4-in-1 Cleaning", "12h Runtime"],
         }
 
-        result = service.build_embedding_text(product_data)
+        result = service.build_embedding_text(robot_data)
 
-        assert "Model: UR10e-V2" in result
+        assert "Key benefits: High throughput, Low maintenance" in result
+        assert "Specifications: 4-in-1 Cleaning, 12h Runtime" in result
+
+    def test_build_embedding_text_with_time_efficiency(self) -> None:
+        """Test building embedding text with time efficiency."""
+        service = RAGService()
+        robot_data = {
+            "name": "Test Robot",
+            "time_efficiency": 0.85,
+        }
+
+        result = service.build_embedding_text(robot_data)
+
+        assert "Time efficiency: 85%" in result
 
 
 class TestGenerateEmbedding:
@@ -115,22 +121,22 @@ class TestGenerateEmbedding:
             await service.generate_embedding("test text")
 
 
-class TestIndexProduct:
-    """Tests for index_product method."""
+class TestIndexRobot:
+    """Tests for index_robot method."""
 
     @pytest.mark.asyncio
-    async def test_index_product_success(self) -> None:
-        """Test successful product indexing."""
+    async def test_index_robot_success(self) -> None:
+        """Test successful robot indexing."""
         mock_client = MagicMock()
         mock_response = MagicMock()
         mock_response.data = [MagicMock(embedding=[0.1] * 1536)]
         mock_client.embeddings.create.return_value = mock_response
 
-        product_id = uuid4()
-        product_data = {
+        robot_id = uuid4()
+        robot_data = {
             "name": "Test Robot",
-            "category": "collaborative_robot",
-            "manufacturer": "Test Corp",
+            "category": "Premium Combo",
+            "best_for": "Indoor courts",
         }
 
         with patch("src.services.rag_service.get_pinecone_index") as mock_get_index:
@@ -138,52 +144,52 @@ class TestIndexProduct:
             mock_get_index.return_value = mock_index
 
             service = RAGService(openai_client=mock_client)
-            result = await service.index_product(product_id, product_data)
+            result = await service.index_robot(robot_id, robot_data)
 
-            assert result == f"product_{product_id}"
+            assert result == f"robot_{robot_id}"
             mock_index.upsert.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_index_product_embedding_failure(self) -> None:
-        """Test product indexing when embedding fails."""
+    async def test_index_robot_embedding_failure(self) -> None:
+        """Test robot indexing when embedding fails."""
         mock_client = MagicMock()
         mock_client.embeddings.create.side_effect = Exception("Embedding error")
 
         service = RAGService(openai_client=mock_client)
 
         with pytest.raises(Exception, match="Embedding error"):
-            await service.index_product(uuid4(), {"name": "Test"})
+            await service.index_robot(uuid4(), {"name": "Test"})
 
 
-class TestDeleteProductEmbedding:
-    """Tests for delete_product_embedding method."""
+class TestDeleteRobotEmbedding:
+    """Tests for delete_robot_embedding method."""
 
     @pytest.mark.asyncio
-    async def test_delete_product_embedding_success(self) -> None:
+    async def test_delete_robot_embedding_success(self) -> None:
         """Test successful embedding deletion."""
         with patch("src.services.rag_service.get_pinecone_index") as mock_get_index:
             mock_index = MagicMock()
             mock_get_index.return_value = mock_index
 
             service = RAGService()
-            await service.delete_product_embedding("product_123")
+            await service.delete_robot_embedding("robot_123")
 
-            mock_index.delete.assert_called_once_with(ids=["product_123"])
+            mock_index.delete.assert_called_once_with(ids=["robot_123"])
 
 
-class TestSearchProducts:
-    """Tests for search_products method."""
+class TestSearchRobots:
+    """Tests for search_robots method."""
 
     @pytest.mark.asyncio
-    async def test_search_products_success(self) -> None:
-        """Test successful product search."""
+    async def test_search_robots_success(self) -> None:
+        """Test successful robot search."""
         mock_client = MagicMock()
         mock_response = MagicMock()
         mock_response.data = [MagicMock(embedding=[0.1] * 1536)]
         mock_client.embeddings.create.return_value = mock_response
 
         mock_match = MagicMock()
-        mock_match.metadata = {"product_id": "123", "name": "Test Robot"}
+        mock_match.metadata = {"robot_id": "123", "name": "Test Robot"}
         mock_match.score = 0.95
 
         with patch("src.services.rag_service.get_pinecone_index") as mock_get_index:
@@ -192,15 +198,15 @@ class TestSearchProducts:
             mock_get_index.return_value = mock_index
 
             service = RAGService(openai_client=mock_client)
-            results = await service.search_products("collaborative robot", top_k=5)
+            results = await service.search_robots("cleaning robot", top_k=5)
 
             assert len(results) == 1
-            assert results[0]["product_id"] == "123"
+            assert results[0]["robot_id"] == "123"
             assert results[0]["score"] == 0.95
 
     @pytest.mark.asyncio
-    async def test_search_products_with_category_filter(self) -> None:
-        """Test product search with category filter."""
+    async def test_search_robots_with_category_filter(self) -> None:
+        """Test robot search with category filter."""
         mock_client = MagicMock()
         mock_response = MagicMock()
         mock_response.data = [MagicMock(embedding=[0.1] * 1536)]
@@ -212,23 +218,23 @@ class TestSearchProducts:
             mock_get_index.return_value = mock_index
 
             service = RAGService(openai_client=mock_client)
-            await service.search_products(
+            await service.search_robots(
                 "robot",
                 top_k=5,
-                category="collaborative_robot",
+                category="Premium Combo",
             )
 
             # Verify filter was passed
             call_kwargs = mock_index.query.call_args.kwargs
-            assert call_kwargs["filter"] == {"category": {"$eq": "collaborative_robot"}}
+            assert call_kwargs["filter"] == {"category": {"$eq": "Premium Combo"}}
 
 
-class TestGetRelevantProductsForContext:
-    """Tests for get_relevant_products_for_context method."""
+class TestGetRelevantRobotsForContext:
+    """Tests for get_relevant_robots_for_context method."""
 
     @pytest.mark.asyncio
-    async def test_get_relevant_products_for_context_success(self) -> None:
-        """Test getting relevant products for agent context."""
+    async def test_get_relevant_robots_for_context_success(self) -> None:
+        """Test getting relevant robots for agent context."""
         mock_client = MagicMock()
         mock_response = MagicMock()
         mock_response.data = [MagicMock(embedding=[0.1] * 1536)]
@@ -236,10 +242,10 @@ class TestGetRelevantProductsForContext:
 
         mock_match = MagicMock()
         mock_match.metadata = {
-            "product_id": "123",
-            "name": "UR10e",
-            "category": "collaborative_robot",
-            "manufacturer": "Universal Robots",
+            "robot_id": "123",
+            "name": "Pudu CC1 Pro",
+            "category": "Premium Combo",
+            "best_for": "Indoor courts",
         }
         mock_match.score = 0.9
 
@@ -249,16 +255,16 @@ class TestGetRelevantProductsForContext:
             mock_get_index.return_value = mock_index
 
             service = RAGService(openai_client=mock_client)
-            result = await service.get_relevant_products_for_context("cobot for palletizing")
+            result = await service.get_relevant_robots_for_context("robot for indoor cleaning")
 
-            assert "Relevant products from our catalog:" in result
-            assert "UR10e" in result
-            assert "Universal Robots" in result
-            assert "Collaborative Robot" in result
+            assert "Relevant cleaning robots from our catalog:" in result
+            assert "Pudu CC1 Pro" in result
+            assert "Premium Combo" in result
+            assert "Indoor courts" in result
 
     @pytest.mark.asyncio
-    async def test_get_relevant_products_for_context_empty(self) -> None:
-        """Test getting relevant products when none found."""
+    async def test_get_relevant_robots_for_context_empty(self) -> None:
+        """Test getting relevant robots when none found."""
         mock_client = MagicMock()
         mock_response = MagicMock()
         mock_response.data = [MagicMock(embedding=[0.1] * 1536)]
@@ -270,18 +276,18 @@ class TestGetRelevantProductsForContext:
             mock_get_index.return_value = mock_index
 
             service = RAGService(openai_client=mock_client)
-            result = await service.get_relevant_products_for_context("something unusual")
+            result = await service.get_relevant_robots_for_context("something unusual")
 
             assert result == ""
 
     @pytest.mark.asyncio
-    async def test_get_relevant_products_for_context_error_handling(self) -> None:
-        """Test error handling in get_relevant_products_for_context."""
+    async def test_get_relevant_robots_for_context_error_handling(self) -> None:
+        """Test error handling in get_relevant_robots_for_context."""
         mock_client = MagicMock()
         mock_client.embeddings.create.side_effect = Exception("API error")
 
         service = RAGService(openai_client=mock_client)
-        result = await service.get_relevant_products_for_context("test query")
+        result = await service.get_relevant_robots_for_context("test query")
 
         # Should return empty string on error, not raise
         assert result == ""

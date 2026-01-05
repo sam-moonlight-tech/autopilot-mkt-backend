@@ -131,11 +131,27 @@ graph TD
   class ProfileService:
       async def get_or_create_profile(self, user_id: UUID, email: str) -> dict
       async def get_profile(self, user_id: UUID) -> dict | None
+      async def get_profile_by_id(self, profile_id: UUID) -> dict | None
       async def update_profile(self, user_id: UUID, data: ProfileUpdate) -> dict
       async def get_user_companies(self, user_id: UUID) -> list[dict]
   ```
 - **Dependencies:** src/core/supabase.py
 - **Reuses:** Supabase client
+
+### Component 3a: Session Claim Integration (NEW)
+
+Profile service integrates with session claiming via the DiscoveryProfileService:
+
+```python
+# When session is claimed, the following happens:
+# 1. ProfileService.get_or_create_profile() ensures profile exists
+# 2. DiscoveryProfileService.create_from_session() copies session data
+# 3. ConversationService.transfer_to_profile() moves conversation ownership
+# 4. CheckoutService.transfer_orders_to_profile() moves order ownership
+# 5. SessionService marks session as claimed
+```
+
+This orchestration is handled by SessionService.claim_session() which coordinates all services.
 
 ### Component 4: Company Service (`src/services/company_service.py`)
 

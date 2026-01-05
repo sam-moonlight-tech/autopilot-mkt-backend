@@ -51,6 +51,17 @@ class Settings(BaseSettings):
     pinecone_index_name: str = Field(default="autopilot-products", description="Pinecone index name")
     embedding_model: str = Field(default="text-embedding-3-small", description="OpenAI embedding model")
 
+    # Session
+    session_cookie_name: str = Field(default="autopilot_session", description="Session cookie name")
+    session_cookie_max_age: int = Field(default=2592000, description="Session cookie max age in seconds (30 days)")
+    session_cookie_secure: bool = Field(default=True, description="Use secure cookies (HTTPS only)")
+    session_expiry_days: int = Field(default=30, description="Days until session expires")
+
+    # Stripe
+    stripe_secret_key: str = Field(default="", description="Stripe secret API key")
+    stripe_webhook_secret: str = Field(default="", description="Stripe webhook signing secret")
+    stripe_publishable_key: str = Field(default="", description="Stripe publishable key (for frontend)")
+
     @property
     def cors_origins_list(self) -> list[str]:
         """Parse CORS origins string into a list."""

@@ -103,7 +103,7 @@ class TestCanAccess:
 
         mock_response = MagicMock()
         mock_response.data = conversation
-        mock_supabase.table.return_value.select.return_value.eq.return_value.single.return_value.execute.return_value = (
+        mock_supabase.table.return_value.select.return_value.eq.return_value.maybe_single.return_value.execute.return_value = (
             mock_response
         )
 
@@ -127,7 +127,7 @@ class TestCanAccess:
 
         mock_response = MagicMock()
         mock_response.data = conversation
-        mock_supabase.table.return_value.select.return_value.eq.return_value.single.return_value.execute.return_value = (
+        mock_supabase.table.return_value.select.return_value.eq.return_value.maybe_single.return_value.execute.return_value = (
             mock_response
         )
 

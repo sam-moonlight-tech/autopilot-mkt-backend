@@ -32,62 +32,65 @@ class RAGService:
             self._openai_client = get_openai_client()
         return self._openai_client
 
-    def build_embedding_text(self, product_data: dict[str, Any]) -> str:
-        """Build text representation of product for embedding.
+    def build_embedding_text(self, robot_data: dict[str, Any]) -> str:
+        """Build text representation of robot for embedding.
 
-        Combines product fields into a single text string optimized
+        Combines robot fields into a single text string optimized
         for semantic search.
 
         Args:
-            product_data: Product data dictionary.
+            robot_data: Robot catalog data dictionary.
 
         Returns:
             str: Combined text for embedding generation.
         """
         parts = []
 
-        # Add name (most important)
-        if name := product_data.get("name"):
-            parts.append(f"Product: {name}")
-
-        # Add manufacturer
-        if manufacturer := product_data.get("manufacturer"):
-            parts.append(f"Manufacturer: {manufacturer}")
+        # Add name with manufacturer (most important)
+        name = robot_data.get("name", "")
+        manufacturer = robot_data.get("manufacturer", "")
+        if manufacturer and name:
+            parts.append(f"Robot: {manufacturer} {name}")
+        elif name:
+            parts.append(f"Robot: {name}")
 
         # Add category
-        if category := product_data.get("category"):
-            # Convert snake_case to readable format
-            readable_category = category.replace("_", " ").title()
-            parts.append(f"Category: {readable_category}")
+        if category := robot_data.get("category"):
+            parts.append(f"Category: {category}")
 
-        # Add description
-        if description := product_data.get("description"):
-            parts.append(f"Description: {description}")
+        # Add best_for description
+        if best_for := robot_data.get("best_for"):
+            parts.append(f"Best for: {best_for}")
 
-        # Add model number
-        if model_number := product_data.get("model_number"):
-            parts.append(f"Model: {model_number}")
+        # Add cleaning modes
+        if modes := robot_data.get("modes"):
+            if isinstance(modes, list) and modes:
+                parts.append(f"Cleaning modes: {', '.join(modes)}")
 
-        # Add specs as key-value pairs
-        if specs := product_data.get("specs"):
-            if isinstance(specs, dict) and specs:
-                spec_parts = []
-                for key, value in specs.items():
-                    readable_key = key.replace("_", " ").title()
-                    spec_parts.append(f"{readable_key}: {value}")
-                parts.append(f"Specifications: {', '.join(spec_parts)}")
+        # Add supported surfaces
+        if surfaces := robot_data.get("surfaces"):
+            if isinstance(surfaces, list) and surfaces:
+                parts.append(f"Surfaces: {', '.join(surfaces)}")
+
+        # Add key reasons/benefits
+        if key_reasons := robot_data.get("key_reasons"):
+            if isinstance(key_reasons, list) and key_reasons:
+                parts.append(f"Key benefits: {', '.join(key_reasons)}")
+
+        # Add specs
+        if specs := robot_data.get("specs"):
+            if isinstance(specs, list) and specs:
+                parts.append(f"Specifications: {', '.join(specs)}")
 
         # Add pricing information
-        if pricing := product_data.get("pricing"):
-            if isinstance(pricing, dict) and pricing:
-                price_parts = []
-                for key, value in pricing.items():
-                    readable_key = key.replace("_", " ").title()
-                    if isinstance(value, (int, float)):
-                        price_parts.append(f"{readable_key}: ${value:,.0f}")
-                    else:
-                        price_parts.append(f"{readable_key}: {value}")
-                parts.append(f"Pricing: {', '.join(price_parts)}")
+        if monthly_lease := robot_data.get("monthly_lease"):
+            parts.append(f"Monthly lease: ${float(monthly_lease):,.0f}")
+        if purchase_price := robot_data.get("purchase_price"):
+            parts.append(f"Purchase price: ${float(purchase_price):,.0f}")
+
+        # Add time efficiency
+        if time_efficiency := robot_data.get("time_efficiency"):
+            parts.append(f"Time efficiency: {float(time_efficiency) * 100:.0f}%")
 
         return "\n".join(parts)
 
@@ -113,18 +116,18 @@ class RAGService:
             logger.error(f"Failed to generate embedding: {e}")
             raise
 
-    async def index_product(
+    async def index_robot(
         self,
-        product_id: UUID,
-        product_data: dict[str, Any],
+        robot_id: UUID,
+        robot_data: dict[str, Any],
     ) -> str:
-        """Index a product in Pinecone.
+        """Index a robot in Pinecone.
 
         Generates embedding and upserts to Pinecone index.
 
         Args:
-            product_id: Product UUID.
-            product_data: Product data for embedding.
+            robot_id: Robot UUID.
+            robot_data: Robot data for embedding.
 
         Returns:
             str: Embedding ID in Pinecone.
@@ -134,23 +137,26 @@ class RAGService:
         """
         try:
             # Build text for embedding
-            embedding_text = self.build_embedding_text(product_data)
+            embedding_text = self.build_embedding_text(robot_data)
 
             # Generate embedding
             embedding = await self.generate_embedding(embedding_text)
 
             # Create embedding ID
-            embedding_id = f"product_{product_id}"
+            embedding_id = f"robot_{robot_id}"
 
             # Build metadata for filtering
             metadata: dict[str, Any] = {
-                "product_id": str(product_id),
-                "name": product_data.get("name", ""),
-                "category": product_data.get("category", ""),
+                "robot_id": str(robot_id),
+                "name": robot_data.get("name", ""),
+                "category": robot_data.get("category", ""),
             }
 
-            if manufacturer := product_data.get("manufacturer"):
-                metadata["manufacturer"] = manufacturer
+            if best_for := robot_data.get("best_for"):
+                metadata["best_for"] = best_for
+
+            if modes := robot_data.get("modes"):
+                metadata["modes"] = modes
 
             # Upsert to Pinecone
             index = get_pinecone_index()
@@ -164,15 +170,15 @@ class RAGService:
                 ]
             )
 
-            logger.info(f"Indexed product {product_id} with embedding ID {embedding_id}")
+            logger.info(f"Indexed robot {robot_id} with embedding ID {embedding_id}")
             return embedding_id
 
         except Exception as e:
-            logger.error(f"Failed to index product {product_id}: {e}")
+            logger.error(f"Failed to index robot {robot_id}: {e}")
             raise
 
-    async def delete_product_embedding(self, embedding_id: str) -> None:
-        """Delete a product embedding from Pinecone.
+    async def delete_robot_embedding(self, embedding_id: str) -> None:
+        """Delete a robot embedding from Pinecone.
 
         Args:
             embedding_id: Embedding ID to delete.
@@ -185,13 +191,13 @@ class RAGService:
             logger.error(f"Failed to delete embedding {embedding_id}: {e}")
             raise
 
-    async def search_products(
+    async def search_robots(
         self,
         query: str,
         top_k: int = 10,
         category: str | None = None,
     ) -> list[dict[str, Any]]:
-        """Search for products using semantic similarity.
+        """Search for robots using semantic similarity.
 
         Args:
             query: Search query text.
@@ -199,7 +205,7 @@ class RAGService:
             category: Optional category filter.
 
         Returns:
-            list[dict]: Search results with product_id and score.
+            list[dict]: Search results with robot_id and score.
         """
         try:
             # Generate query embedding
@@ -224,7 +230,7 @@ class RAGService:
             for match in results.matches:
                 search_results.append(
                     {
-                        "product_id": match.metadata.get("product_id") if match.metadata else None,
+                        "robot_id": match.metadata.get("robot_id") if match.metadata else None,
                         "score": match.score,
                         "metadata": match.metadata,
                     }
@@ -234,54 +240,54 @@ class RAGService:
             return search_results
 
         except Exception as e:
-            logger.error(f"Failed to search products: {e}")
+            logger.error(f"Failed to search robots: {e}")
             raise
 
-    async def get_relevant_products_for_context(
+    async def get_relevant_robots_for_context(
         self,
         query: str,
         top_k: int = 5,
     ) -> str:
-        """Get relevant product information for agent context.
+        """Get relevant robot information for agent context.
 
-        Searches for products and formats them as context text
+        Searches for robots and formats them as context text
         for the agent to use in responses.
 
         Args:
             query: User query or message.
-            top_k: Number of products to include.
+            top_k: Number of robots to include.
 
         Returns:
-            str: Formatted product context for agent.
+            str: Formatted robot context for agent.
         """
         try:
-            results = await self.search_products(query=query, top_k=top_k)
+            results = await self.search_robots(query=query, top_k=top_k)
 
             if not results:
                 return ""
 
-            context_parts = ["Relevant products from our catalog:"]
+            context_parts = ["Relevant cleaning robots from our catalog:"]
 
             for i, result in enumerate(results, 1):
                 metadata = result.get("metadata", {})
                 name = metadata.get("name", "Unknown")
-                category = metadata.get("category", "").replace("_", " ").title()
-                manufacturer = metadata.get("manufacturer", "")
+                category = metadata.get("category", "")
+                best_for = metadata.get("best_for", "")
                 score = result.get("score", 0)
 
-                product_info = f"{i}. {name}"
-                if manufacturer:
-                    product_info += f" by {manufacturer}"
+                robot_info = f"{i}. {name}"
                 if category:
-                    product_info += f" ({category})"
-                product_info += f" - Relevance: {score:.2f}"
+                    robot_info += f" ({category})"
+                if best_for:
+                    robot_info += f" - {best_for}"
+                robot_info += f" - Relevance: {score:.2f}"
 
-                context_parts.append(product_info)
+                context_parts.append(robot_info)
 
             return "\n".join(context_parts)
 
         except Exception as e:
-            logger.error(f"Failed to get relevant products for context: {e}")
+            logger.error(f"Failed to get relevant robots for context: {e}")
             return ""
 
 

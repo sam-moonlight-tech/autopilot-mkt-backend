@@ -10,7 +10,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Copy requirements and install dependencies
 COPY requirements.txt .
-RUN pip wheel --no-cache-dir --no-deps --wheel-dir /app/wheels -r requirements.txt
+# Build wheels with dependencies included
+RUN pip wheel --no-cache-dir --wheel-dir /app/wheels -r requirements.txt
 
 # Production stage
 FROM python:3.11-slim
@@ -25,9 +26,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy wheels from builder and install
+# Copy wheels from builder and install (including all dependencies)
 COPY --from=builder /app/wheels /wheels
-RUN pip install --no-cache /wheels/*
+COPY requirements.txt .
+RUN pip install --no-cache --find-links /wheels --no-index -r requirements.txt
 
 # Copy application code
 COPY src/ ./src/
@@ -47,12 +49,12 @@ ENV APP_ENV=production \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1
 
-# Expose port
+# Expose port (Cloud Run will set PORT env var automatically)
 EXPOSE 8080
 
-# Health check
+# Health check (uses PORT env var, defaults to 8080)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8080/health || exit 1
+    CMD curl -f http://localhost:${PORT:-8080}/health || exit 1
 
-# Run the application
-CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8080"]
+# Run the application (Cloud Run sets PORT automatically)
+CMD uvicorn src.main:app --host 0.0.0.0 --port ${PORT:-8080}

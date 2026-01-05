@@ -204,3 +204,66 @@ This implementation plan establishes the conversation system with OpenAI integra
   - Test message creation stores both user and agent messages
   - Purpose: Verify message API end-to-end
   - _Requirements: 4, 5_
+
+## Additional Tasks: Session Support & Phase Alignment
+
+These tasks extend the conversations feature to support anonymous users via sessions and align phase values with the frontend.
+
+- [ ] 4.22. Update conversations table for session ownership
+  - File: `supabase/migrations/009_update_conversations.sql` (create)
+  - Make user_id nullable
+  - Add session_id UUID column with FK to sessions
+  - Add constraint: user_id OR session_id must be non-null
+  - Add index on session_id
+  - Purpose: Enable session-owned conversations
+  - _Requirements: 8_
+
+- [ ] 4.23. Migrate conversation phase enum
+  - File: `supabase/migrations/009_update_conversations.sql` (modify)
+  - Create new enum type with values: 'discovery', 'roi', 'greenlight'
+  - Migrate existing 'selection' and 'completed' values to 'greenlight'
+  - Alter column to use new enum type
+  - Drop old enum type
+  - Purpose: Align phases with frontend
+  - _Requirements: 9_
+
+- [ ] 4.24. Update conversation model for session support
+  - File: `src/models/conversation.py` (modify)
+  - Add session_id field to Conversation TypedDict
+  - Update ConversationPhase to: DISCOVERY, ROI, GREENLIGHT
+  - Remove SELECTION and COMPLETED phases
+  - Purpose: Align model with schema changes
+  - _Requirements: 8, 9_
+
+- [ ] 4.25. Add session ownership methods to ConversationService
+  - File: `src/services/conversation_service.py` (modify)
+  - Add create_conversation_for_session(session_id, data) method
+  - Add can_access_by_session(conversation_id, session_id) method
+  - Add transfer_to_profile(conversation_id, profile_id) method
+  - Update can_access() to check session_id ownership
+  - Purpose: Enable session-based conversation operations
+  - _Requirements: 8_
+
+- [ ] 4.26. Update AgentService for greenlight phase
+  - File: `src/services/agent_service.py` (modify)
+  - Replace 'selection' key with 'greenlight' in SYSTEM_PROMPTS
+  - Update greenlight prompt for checkout guidance
+  - Purpose: Align agent prompts with new phases
+  - _Requirements: 9_
+
+- [ ] 4.27. Update conversation routes for dual auth
+  - File: `src/api/routes/conversations.py` (modify)
+  - Update POST /conversations to use get_current_user_or_session dependency
+  - Create session-owned conversation when no JWT present
+  - Update access checks to verify session ownership
+  - Purpose: Enable anonymous user conversations
+  - _Requirements: 8_
+
+- [ ] 4.28. Write integration tests for session-owned conversations
+  - File: `tests/integration/test_session_conversations.py` (create)
+  - Test POST /conversations with session cookie creates session-owned conversation
+  - Test message sending works with session auth
+  - Test conversation access denied for wrong session
+  - Test conversation ownership transfer on session claim
+  - Purpose: Verify session conversation flow
+  - _Requirements: 8_

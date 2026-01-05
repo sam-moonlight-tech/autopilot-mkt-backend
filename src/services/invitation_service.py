@@ -67,11 +67,11 @@ class InvitationService:
             self.client.table("invitations")
             .select("*, companies(name)")
             .eq("id", str(invitation_id))
-            .single()
+            .maybe_single()
             .execute()
         )
 
-        return response.data if response.data else None
+        return response.data if response and response.data else None
 
     async def list_company_invitations(
         self,

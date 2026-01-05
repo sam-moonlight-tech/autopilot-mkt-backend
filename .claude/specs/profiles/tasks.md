@@ -198,3 +198,38 @@ This implementation plan establishes user profile and company management for the
   - Test permission enforcement
   - Purpose: Verify company API works end-to-end
   - _Requirements: 2, 3, 4, 6_
+
+## Additional Tasks: Discovery Profile & Session Claim
+
+These tasks add discovery profile storage and session claim integration to the profiles feature.
+
+- [ ] 3.21. Add get_profile_by_id method to ProfileService
+  - File: `src/services/profile_service.py` (modify)
+  - Implement get_profile_by_id(profile_id) returning profile by id
+  - Used by session claim to link discovery data
+  - Purpose: Enable profile lookup by profile_id
+  - _Requirements: 7_
+
+- [ ] 3.22. Create discovery profile relationship
+  - Note: Discovery profile table and service are created in sessions-discovery spec
+  - File: `src/schemas/profile.py` (modify)
+  - Add ProfileWithDiscovery schema that includes discovery_profile data
+  - Purpose: Enable fetching profile with discovery data
+  - _Requirements: 7_
+
+- [ ] 3.23. Update profile routes for discovery data
+  - File: `src/api/routes/profiles.py` (modify)
+  - Add optional include_discovery query param to GET /profiles/me
+  - Return discovery_profile data when requested
+  - Purpose: Enable fetching profile with discovery data
+  - _Leverage: src/services/discovery_profile_service.py from sessions-discovery spec_
+  - _Requirements: 7_
+
+- [ ] 3.24. Write integration tests for session claim with profile
+  - File: `tests/integration/test_session_claim.py` (create)
+  - Test session claim creates discovery_profile
+  - Test session claim transfers conversation to profile
+  - Test session claim transfers orders to profile
+  - Test session claim with existing discovery_profile merges data
+  - Purpose: Verify session claim integration
+  - _Requirements: 8_

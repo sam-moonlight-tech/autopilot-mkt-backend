@@ -86,6 +86,29 @@ Profile and company management enables the Autopilot platform by providing:
 3. WHEN a member action is required (view data) THEN the system SHALL verify the user is any member
 4. IF a non-owner attempts owner-only action THEN the system SHALL return 403 Forbidden
 
+### Requirement 7: Discovery Profile Association (NEW)
+
+**User Story:** As a user, I want my discovery journey data stored with my profile, so that I can review and continue my procurement exploration.
+
+#### Acceptance Criteria
+
+1. WHEN a user has a profile THEN the system SHALL support an associated discovery_profile
+2. WHEN discovery_profile is queried THEN the system SHALL return answers, ROI inputs, and selections
+3. WHEN discovery_profile is updated THEN the system SHALL store discovery session data
+4. WHEN a profile is deleted THEN the system SHALL cascade delete the discovery_profile
+
+### Requirement 8: Session Claim Integration (NEW)
+
+**User Story:** As a user who started anonymously, I want my session data transferred to my profile on signup, so that I don't lose my progress.
+
+#### Acceptance Criteria
+
+1. WHEN a user claims a session THEN the system SHALL create a discovery_profile with session data
+2. WHEN session is claimed THEN the system SHALL transfer conversation ownership to the profile
+3. WHEN session is claimed THEN the system SHALL transfer order ownership to the profile
+4. WHEN profile already has discovery_profile THEN the system SHALL merge session data appropriately
+5. WHEN session is claimed THEN the system SHALL mark the session as claimed
+
 ## Non-Functional Requirements
 
 ### Performance

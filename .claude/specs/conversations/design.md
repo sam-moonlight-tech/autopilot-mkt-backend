@@ -278,19 +278,73 @@ Guidelines:
 - Present estimated savings and payback periods
 - Recommend specific products based on their needs
 - Explain the assumptions behind calculations
-- When ready, suggest moving to the selection phase""",
+- When ready, suggest moving to the greenlight phase""",
 
-    "selection": """You are an AI procurement assistant for Autopilot.
+    "greenlight": """You are an AI procurement assistant for Autopilot.
 
-Current Phase: Option Selection
-Your goal is to help finalize their selection and define next steps.
+Current Phase: Greenlight
+Your goal is to help finalize their selection and guide them to checkout.
 
 Guidelines:
-- Summarize the recommended options
-- Help them identify stakeholders for the decision
-- Define clear next steps
-- Offer to connect them with sales for detailed proposals"""
+- Summarize the selected robot and projected ROI
+- Address any final questions or concerns
+- Guide them to the checkout process
+- Explain lease pricing and what's included
+- Be confident and supportive of their decision
+- Offer to connect them with sales for custom requirements"""
 }
+```
+
+## Session-Owned Conversations (NEW)
+
+To support anonymous users, conversations can be owned by either a user (authenticated) or a session (anonymous):
+
+```python
+# Conversation ownership check
+async def can_access(
+    self,
+    conversation_id: UUID,
+    user_id: UUID | None = None,
+    session_id: UUID | None = None
+) -> bool:
+    """Check if user or session can access conversation"""
+    conversation = await self.get_conversation(conversation_id)
+    if not conversation:
+        return False
+
+    # Check user ownership
+    if user_id and conversation.get('user_id') == user_id:
+        return True
+
+    # Check session ownership
+    if session_id and conversation.get('session_id') == session_id:
+        return True
+
+    # Check company membership (for authenticated users)
+    if user_id and conversation.get('company_id'):
+        return await self.company_service.is_member(
+            conversation['company_id'], user_id
+        )
+
+    return False
+```
+
+### Ownership Transfer on Session Claim
+
+When a session is claimed by an authenticated user, conversation ownership transfers:
+
+```python
+async def transfer_to_profile(
+    self,
+    conversation_id: UUID,
+    profile_id: UUID
+) -> dict:
+    """Transfer session-owned conversation to profile"""
+    return await self.supabase.table('conversations').update({
+        'user_id': str(profile_id),
+        'session_id': None,
+        'updated_at': datetime.utcnow().isoformat()
+    }).eq('id', str(conversation_id)).execute()
 ```
 
 ## Error Handling

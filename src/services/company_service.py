@@ -67,11 +67,11 @@ class CompanyService:
             self.client.table("companies")
             .select("*")
             .eq("id", str(company_id))
-            .single()
+            .maybe_single()
             .execute()
         )
 
-        return response.data if response.data else None
+        return response.data if response and response.data else None
 
     async def is_member(self, company_id: UUID, profile_id: UUID) -> bool:
         """Check if a profile is a member of a company.
@@ -128,7 +128,7 @@ class CompanyService:
             .select("role")
             .eq("company_id", str(company_id))
             .eq("profile_id", str(profile_id))
-            .single()
+            .maybe_single()
             .execute()
         )
 

@@ -12,13 +12,15 @@ You are continuing work on the **Autopilot Backend**, a dockerized FastAPI appli
 - `structure.md` - Project structure and coding conventions
 
 ### Feature Specifications (`.claude/specs/`)
-Five complete specifications with requirements, design, and tasks:
+Seven complete specifications with requirements, design, and tasks:
 
 1. **core-infra** (14 tasks) - Docker, FastAPI scaffold, Supabase client, health endpoints
 2. **auth** (10 tasks) - JWT verification middleware, protected routes
-3. **profiles** (20 tasks) - User profiles, companies, invitations
-4. **conversations** (21 tasks) - Messages, OpenAI GPT-4o integration
+3. **profiles** (24 tasks) - User profiles, companies, invitations, discovery profile integration
+4. **conversations** (28 tasks) - Messages, OpenAI GPT-4o integration, session-owned conversations
 5. **rag-integration** (20 tasks) - Pinecone vector search, product catalog
+6. **sessions-discovery** (27 tasks) - Anonymous session management, discovery profile storage, session claim
+7. **checkout-stripe** (26 tasks) - Robot catalog, Stripe subscription checkout, order management
 
 ## Technical Stack
 - **Runtime**: Python 3.11+ with FastAPI
@@ -35,7 +37,13 @@ Execute specs in this order (dependencies flow downward):
 core-infra → auth → profiles → conversations
                               ↘
                          rag-integration
+                              ↘
+                    sessions-discovery → checkout-stripe
 ```
+
+**New Spec Dependencies:**
+- **sessions-discovery** depends on: profiles, conversations (for session claim and conversation transfer)
+- **checkout-stripe** depends on: sessions-discovery (for session-based order linking)
 
 ## How to Execute
 
@@ -118,7 +126,26 @@ The implementation is complete when:
 - [ ] Profile and company CRUD operations work
 - [ ] Conversations can be created with agent responses
 - [ ] Product search returns semantically relevant results
+- [ ] **Anonymous sessions can be created and tracked via cookies**
+- [ ] **Session data transfers to profile on signup/login**
+- [ ] **Robot catalog displays with correct pricing**
+- [ ] **Stripe checkout creates subscriptions successfully**
+- [ ] **Webhooks update order status on payment completion**
 - [ ] All tests pass
+
+## New Environment Variables Required
+
+```env
+# Stripe (checkout-stripe spec)
+STRIPE_SECRET_KEY=sk_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+STRIPE_PUBLISHABLE_KEY=pk_...
+
+# Session (sessions-discovery spec)
+SESSION_COOKIE_NAME=autopilot_session
+SESSION_COOKIE_MAX_AGE=2592000
+SESSION_COOKIE_SECURE=true
+```
 
 ## Start Here
 

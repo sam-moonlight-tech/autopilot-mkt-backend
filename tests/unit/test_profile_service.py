@@ -131,7 +131,7 @@ class TestUpdateProfile:
 
         mock_response = MagicMock()
         mock_response.data = existing_profile
-        mock_supabase.table.return_value.select.return_value.eq.return_value.single.return_value.execute.return_value = (
+        mock_supabase.table.return_value.select.return_value.eq.return_value.maybe_single.return_value.execute.return_value = (
             mock_response
         )
 
@@ -154,7 +154,7 @@ class TestGetUserCompanies:
         """Test that empty list is returned when user has no profile."""
         mock_response = MagicMock()
         mock_response.data = None
-        mock_supabase.table.return_value.select.return_value.eq.return_value.single.return_value.execute.return_value = (
+        mock_supabase.table.return_value.select.return_value.eq.return_value.maybe_single.return_value.execute.return_value = (
             mock_response
         )
 
@@ -189,7 +189,7 @@ class TestGetUserCompanies:
         membership_response.data = memberships
 
         # Set up the mock chain for profile fetch
-        mock_supabase.table.return_value.select.return_value.eq.return_value.single.return_value.execute.return_value = (
+        mock_supabase.table.return_value.select.return_value.eq.return_value.maybe_single.return_value.execute.return_value = (
             profile_response
         )
         # Set up the mock chain for membership fetch

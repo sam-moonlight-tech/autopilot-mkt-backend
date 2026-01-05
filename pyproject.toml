@@ -28,8 +28,10 @@ dependencies = [
     "supabase>=2.0.0",
     "httpx>=0.26.0",
     "python-jose[cryptography]>=3.3.0",
+    "PyJWT>=2.8.0",
     "openai>=1.0.0",
     "pinecone-client>=3.0.0",
+    "stripe>=7.0.0",
 ]
 
 [project.optional-dependencies]

@@ -23,8 +23,8 @@ def mock_openai_client() -> MagicMock:
 def mock_rag_service() -> MagicMock:
     """Create mock RAG service."""
     rag_service = MagicMock()
-    rag_service.get_relevant_products_for_context = AsyncMock(
-        return_value="Relevant products from our catalog:\n1. UR10e by Universal Robots (Collaborative Robot)"
+    rag_service.get_relevant_robots_for_context = AsyncMock(
+        return_value="Relevant cleaning robots from our catalog:\n1. Pudu CC1 Pro (Premium Combo) - Indoor courts"
     )
     return rag_service
 
@@ -37,7 +37,7 @@ def mock_conversation_service() -> MagicMock:
         return_value={
             "id": str(uuid4()),
             "user_id": str(uuid4()),
-            "phase": "selection",
+            "phase": "greenlight",
             "created_at": "2024-01-01T00:00:00Z",
             "updated_at": "2024-01-01T00:00:00Z",
         }
@@ -60,10 +60,10 @@ class TestAgentServiceRAGIntegration:
     """Tests for AgentService with RAG integration."""
 
     @pytest.mark.asyncio
-    async def test_build_context_includes_rag_for_selection_phase(
+    async def test_build_context_includes_rag_for_greenlight_phase(
         self, mock_rag_service: MagicMock
     ) -> None:
-        """Test that build_context includes RAG context in selection phase."""
+        """Test that build_context includes RAG context in greenlight phase."""
         with patch("src.services.agent_service.get_openai_client"):
             with patch("src.services.agent_service.ConversationService") as mock_conv_cls:
                 mock_conv = MagicMock()
@@ -75,21 +75,21 @@ class TestAgentServiceRAGIntegration:
 
                 context = await service.build_context(
                     conversation_id=conversation_id,
-                    phase=ConversationPhase.SELECTION,
-                    current_message="I need a collaborative robot for palletizing",
+                    phase=ConversationPhase.GREENLIGHT,
+                    current_message="I need a cleaning robot for indoor courts",
                 )
 
                 # Verify RAG service was called
-                mock_rag_service.get_relevant_products_for_context.assert_called_once_with(
-                    query="I need a collaborative robot for palletizing",
+                mock_rag_service.get_relevant_robots_for_context.assert_called_once_with(
+                    query="I need a cleaning robot for indoor courts",
                     top_k=5,
                 )
 
-                # Verify system prompt includes product context
+                # Verify system prompt includes robot context
                 system_message = context[0]
                 assert system_message["role"] == "system"
-                assert "Relevant products from our catalog" in system_message["content"]
-                assert "UR10e" in system_message["content"]
+                assert "Relevant cleaning robots from our catalog" in system_message["content"]
+                assert "Pudu CC1 Pro" in system_message["content"]
 
     @pytest.mark.asyncio
     async def test_build_context_includes_rag_for_roi_phase(
@@ -108,11 +108,11 @@ class TestAgentServiceRAGIntegration:
                 context = await service.build_context(
                     conversation_id=conversation_id,
                     phase=ConversationPhase.ROI,
-                    current_message="What's the ROI for a cobot?",
+                    current_message="What's the ROI for a cleaning robot?",
                 )
 
                 # Verify RAG service was called
-                mock_rag_service.get_relevant_products_for_context.assert_called_once()
+                mock_rag_service.get_relevant_robots_for_context.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_build_context_no_rag_for_discovery_phase(
@@ -135,7 +135,7 @@ class TestAgentServiceRAGIntegration:
                 )
 
                 # RAG service should not be called in discovery phase
-                mock_rag_service.get_relevant_products_for_context.assert_not_called()
+                mock_rag_service.get_relevant_robots_for_context.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_build_context_no_rag_without_message(
@@ -153,12 +153,12 @@ class TestAgentServiceRAGIntegration:
 
                 await service.build_context(
                     conversation_id=conversation_id,
-                    phase=ConversationPhase.SELECTION,
+                    phase=ConversationPhase.GREENLIGHT,
                     current_message=None,
                 )
 
                 # RAG service should not be called without a message
-                mock_rag_service.get_relevant_products_for_context.assert_not_called()
+                mock_rag_service.get_relevant_robots_for_context.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_generate_response_with_rag_context(
@@ -167,7 +167,7 @@ class TestAgentServiceRAGIntegration:
         mock_rag_service: MagicMock,
         mock_conversation_service: MagicMock,
     ) -> None:
-        """Test generate_response includes RAG context for product queries."""
+        """Test generate_response includes RAG context for robot queries."""
         with patch("src.services.agent_service.get_openai_client", return_value=mock_openai_client):
             service = AgentService(rag_service=mock_rag_service)
             service.conversation_service = mock_conversation_service
@@ -176,20 +176,20 @@ class TestAgentServiceRAGIntegration:
 
             user_msg, agent_msg = await service.generate_response(
                 conversation_id=conversation_id,
-                user_message="What collaborative robots do you have?",
+                user_message="What cleaning robots do you have?",
             )
 
             # Verify RAG service was called
-            mock_rag_service.get_relevant_products_for_context.assert_called_once()
+            mock_rag_service.get_relevant_robots_for_context.assert_called_once()
 
             # Verify OpenAI was called
             mock_openai_client.chat.completions.create.assert_called_once()
 
-            # Check the messages passed to OpenAI include product context
+            # Check the messages passed to OpenAI include robot context
             call_args = mock_openai_client.chat.completions.create.call_args
             messages = call_args.kwargs["messages"]
             system_message = messages[0]["content"]
-            assert "Relevant products from our catalog" in system_message
+            assert "Relevant cleaning robots from our catalog" in system_message
 
     @pytest.mark.asyncio
     async def test_rag_error_handled_gracefully(
@@ -198,9 +198,9 @@ class TestAgentServiceRAGIntegration:
         mock_conversation_service: MagicMock,
     ) -> None:
         """Test that RAG errors don't break the agent response."""
-        # Create a RAG service that raises an error
+        # Create a RAG service that returns empty (error case)
         failing_rag_service = MagicMock()
-        failing_rag_service.get_relevant_products_for_context = AsyncMock(
+        failing_rag_service.get_relevant_robots_for_context = AsyncMock(
             return_value=""  # RAGService returns empty string on error
         )
 
@@ -224,11 +224,11 @@ class TestRAGContextFormatting:
     """Tests for RAG context formatting in agent prompts."""
 
     @pytest.mark.asyncio
-    async def test_product_context_appended_to_system_prompt(self) -> None:
-        """Test that product context is properly appended to system prompt."""
+    async def test_robot_context_appended_to_system_prompt(self) -> None:
+        """Test that robot context is properly appended to system prompt."""
         mock_rag_service = MagicMock()
-        mock_rag_service.get_relevant_products_for_context = AsyncMock(
-            return_value="Relevant products from our catalog:\n1. Product A\n2. Product B"
+        mock_rag_service.get_relevant_robots_for_context = AsyncMock(
+            return_value="Relevant cleaning robots from our catalog:\n1. Robot A\n2. Robot B"
         )
 
         with patch("src.services.agent_service.get_openai_client"):
@@ -241,23 +241,23 @@ class TestRAGContextFormatting:
 
                 context = await service.build_context(
                     conversation_id=uuid4(),
-                    phase=ConversationPhase.SELECTION,
+                    phase=ConversationPhase.GREENLIGHT,
                     current_message="Show me robots",
                 )
 
                 system_content = context[0]["content"]
 
-                # Should contain both original system prompt and product context
+                # Should contain both original system prompt and robot context
                 assert "You are Autopilot" in system_content
-                assert "Relevant products from our catalog" in system_content
-                assert "Product A" in system_content
-                assert "Product B" in system_content
+                assert "Relevant cleaning robots from our catalog" in system_content
+                assert "Robot A" in system_content
+                assert "Robot B" in system_content
 
     @pytest.mark.asyncio
     async def test_empty_rag_context_not_appended(self) -> None:
         """Test that empty RAG context is not appended to system prompt."""
         mock_rag_service = MagicMock()
-        mock_rag_service.get_relevant_products_for_context = AsyncMock(return_value="")
+        mock_rag_service.get_relevant_robots_for_context = AsyncMock(return_value="")
 
         with patch("src.services.agent_service.get_openai_client"):
             with patch("src.services.agent_service.ConversationService") as mock_conv_cls:
@@ -269,7 +269,7 @@ class TestRAGContextFormatting:
 
                 context = await service.build_context(
                     conversation_id=uuid4(),
-                    phase=ConversationPhase.SELECTION,
+                    phase=ConversationPhase.GREENLIGHT,
                     current_message="Show me robots",
                 )
 
@@ -277,4 +277,4 @@ class TestRAGContextFormatting:
 
                 # Should only contain original system prompt
                 assert "You are Autopilot" in system_content
-                assert "Relevant products" not in system_content
+                assert "Relevant" not in system_content

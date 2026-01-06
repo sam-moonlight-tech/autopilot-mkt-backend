@@ -1,0 +1,86 @@
+[
+  {
+    "facility_profile": {
+      "name": "Piccadilly Skokie",
+      "type": "pickleball club",
+      "deal_size": "799 monthly with a 3-year warranty"
+    },
+    "pricing_discussions": [
+      {
+        "topic": "OPEX model and tiered pricing",
+        "customer_position": "Preferred OPEX model for financial sense and maintenance support",
+        "resolution": "Negotiated to 799 monthly with a 3-year warranty"
+      }
+    ],
+    "objection_responses": [
+      {
+        "objection": "Cost and terms need to be right due to other expenses like parking lot and air conditioning",
+        "category": "budget",
+        "response_given": "Negotiated a lower price with a 3-year warranty and emphasized the value of the robot",
+        "outcome": "accepted"
+      }
+    ],
+    "roi_discussions": [
+      {
+        "current_cost": "Estimated 200 bucks weekly for cleaning",
+        "proposed_cost": "799 monthly",
+        "savings_argument": "Potential to save on labor costs and extend court life",
+        "customer_reaction": "Agreed it aligns with their labor cost expectations"
+      }
+    ],
+    "closing_triggers": [
+      {
+        "trigger": "Being the first in Illinois market and marketing partnership",
+        "category": "trust"
+      }
+    ],
+    "negotiation_outcomes": {
+      "final_price": "799 monthly with a 3-year warranty",
+      "terms": "2K one-time implementation fee",
+      "next_steps": "Sign paperwork this week and schedule implementation before September"
+    },
+    "_source": "Pickledilly Green Light Chat Cleaning Automation.pdf"
+  },
+  {
+    "facility_profile": {
+      "name": "PickleBos",
+      "type": "pickleball facility",
+      "deal_size": "not explicitly mentioned"
+    },
+    "pricing_discussions": [
+      {
+        "topic": "5K offer extension",
+        "customer_position": "agreement to extend the offer until Monday",
+        "resolution": "agreed to reschedule call for Monday to finalize"
+      }
+    ],
+    "objection_responses": [
+      {
+        "objection": "concern about bank statement sufficiency",
+        "category": "trust",
+        "response_given": "Alex offered full transparency and additional documentation if needed",
+        "outcome": "accepted"
+      }
+    ],
+    "roi_discussions": [
+      {
+        "current_cost": "not explicitly mentioned",
+        "proposed_cost": "not explicitly mentioned",
+        "savings_argument": "alleviate operational tasks",
+        "customer_reaction": "excited and positive"
+      }
+    ],
+    "closing_triggers": [
+      {
+        "trigger": "Chase's endorsement of the product",
+        "category": "trust"
+      }
+    ],
+    "negotiation_outcomes": {
+      "final_price": "not explicitly mentioned",
+      "terms": "5K offer extended until Monday",
+      "next_steps": "reschedule call for Monday, send SLA for signing, begin onboarding process"
+    },
+    "_source": "Next Steps PickleBos Operation Autopilot.pdf"
+  }
+]

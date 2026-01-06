@@ -1,0 +1,1185 @@
+[
+  {
+    "facility_profile": {
+      "name": "Rally House",
+      "type": "indoor pickleball",
+      "court_count": 11,
+      "court_surface": "outdoor pickleball court surface with sand texture",
+      "square_footage": 32000,
+      "staff_size": null,
+      "notable_details": [
+        "Premium upscale facility",
+        "Recently repainted with dark chocolate color",
+        "Hosted a grand opening with 750 people and the mayor"
+      ]
+    },
+    "pain_points": [
+      {
+        "category": "labor",
+        "customer_quote": "It's just not sustainable long term with the size of our organization to keep up with it.",
+        "context": "Sara is primarily responsible for cleaning the courts, which is not sustainable."
+      },
+      {
+        "category": "quality",
+        "customer_quote": "The mopping doesn't work that well... you can still see the stains even after we mop.",
+        "context": "Current cleaning methods are not effective in removing stains."
+      },
+      {
+        "category": "cost",
+        "customer_quote": "The cost did go up for the vacuum service monthly.",
+        "context": "Engaged a janitorial service that increased costs."
+      },
+      {
+        "category": "health",
+        "customer_quote": "The backpack vacuum, it kills my shoulder.",
+        "context": "Sara experiences physical strain from using current cleaning equipment."
+      }
+    ],
+    "questions_asked": [
+      {
+        "question": "Can we like, try before we buy, like test it for a month or two?",
+        "topic": "operations",
+        "context": "Nick is interested in testing the cleaning robot before committing to a purchase."
+      },
+      {
+        "question": "What else do we have to do on a recurring basis?",
+        "topic": "operations",
+        "context": "Nick is inquiring about the maintenance and operational requirements of the cleaning robot."
+      }
+    ],
+    "objections": [
+      {
+        "objection": "Can we like, try before we buy, like test it for a month or two?",
+        "category": "trust",
+        "context": "Nick is hesitant to commit without first testing the product."
+      }
+    ],
+    "buying_signals": [
+      {
+        "signal": "The Roomba model, the CC was intriguing to me.",
+        "strength": "moderate"
+      },
+      {
+        "signal": "Obviously this is intriguing. You know, looks like a very fancy, expensive Roomba.",
+        "strength": "moderate"
+      }
+    ],
+    "timeline_context": {
+      "urgency": "soon",
+      "details": "Nick is interested in testing the product soon to address current cleaning challenges."
+    },
+    "_source": "Sara Dawson Autopilot Meeting Recording.pdf"
+  },
+  {
+    "facility_profile": {
+      "name": null,
+      "type": "indoor multi-sport",
+      "court_count": 6,
+      "court_surface": null,
+      "square_footage": null,
+      "staff_size": null,
+      "notable_details": [
+        "90% capacity tennis wise",
+        "Courts shared with pickleball",
+        "Split scenario with two courts on one side and four on the other"
+      ]
+    },
+    "pain_points": [
+      {
+        "category": "labor",
+        "customer_quote": "we pay people to currently, like, you know, sweep our courts, and we have issues sometimes with our sweepers and they break down",
+        "context": "Current manual sweeping process is labor-intensive and equipment is unreliable"
+      },
+      {
+        "category": "quality",
+        "customer_quote": "The biggest thing that we found with vacuums is that tennis ball fuzz does not handle well.",
+        "context": "Current vacuums struggle with tennis ball fuzz, affecting cleaning quality"
+      },
+      {
+        "category": "cost",
+        "customer_quote": "labor costs all in probably ballpark it at like 2,000 bucks a month",
+        "context": "Current cleaning costs are significant due to full-time maintenance staff"
+      }
+    ],
+    "questions_asked": [
+      {
+        "question": "So tell me, what does it like, so how does this, how does what you do work? Like is it a, you sell the product? You, is it a lease? Is it a rent to own?",
+        "topic": "pricing",
+        "context": "Understanding the purchasing model for the cleaning robots"
+      },
+      {
+        "question": "I actually, I haven't seen a video of it. Do you have like a video or something that you could pull up just so I could see it in action?",
+        "topic": "operations",
+        "context": "Wants to see the product in action to better understand its functionality"
+      },
+      {
+        "question": "Do you guys have like a trial period? You have like, like, do you have one where you could try for a little bit of time or is it like you got to commit before you can see how it works in your facility?",
+        "topic": "trust",
+        "context": "Interested in trying the product before making a full commitment"
+      },
+      {
+        "question": "How many of these have. Do you have on the market? Like, how many of you sold out? Like, how many are out and about.",
+        "topic": "trust",
+        "context": "Assessing the product's market presence and reliability"
+      }
+    ],
+    "objections": [
+      {
+        "objection": "I personally can't make any decisions right now. I need to take it back to my partner.",
+        "category": "timing",
+        "context": "Needs partner's input before proceeding with any decision"
+      }
+    ],
+    "buying_signals": [
+      {
+        "signal": "I think it's very cool and I definitely think it's something that I think would be helpful.",
+        "strength": "strong"
+      }
+    ],
+    "timeline_context": {
+      "urgency": "future",
+      "details": "Planning to discuss with partner and possibly include in the 2026 budget"
+    },
+    "_source": "George Zink Operation Autopilot Meeting Recording.pdf"
+  },
+  {
+    "facility_profile": {
+      "name": "Pickleball Club of Georgia",
+      "type": "indoor pickleball",
+      "court_count": 33,
+      "court_surface": "Cushion X",
+      "square_footage": 110000,
+      "staff_size": null,
+      "notable_details": [
+        "largest indoor pickleball facility in the country",
+        "includes a cafe with a full bar, four trackman golf simulators, a Pilates studio, a pro shop, and event rooms",
+        "each court is individually fenced"
+      ]
+    },
+    "pain_points": [
+      {
+        "category": "operations",
+        "customer_quote": "I want to understand how an automated cleaning system like this deals with individually fenced courts.",
+        "context": "Concern about how the cleaning robots will navigate individually fenced courts."
+      }
+    ],
+    "questions_asked": [
+      {
+        "question": "Do you recommend the courts being cleaned twice a day?",
+        "topic": "cleaning",
+        "context": "Inquiring about the recommended cleaning frequency for the courts."
+      },
+      {
+        "question": "How many robots, how quickly can they do a court? And would we need more than one for our facility or would one do it?",
+        "topic": "operations",
+        "context": "Understanding the number of robots needed and their efficiency."
+      },
+      {
+        "question": "When the machine starts, can it be programmed to start from its storage place, or does it need to be pulled out and set up at one particular point?",
+        "topic": "operations",
+        "context": "Clarifying the operational setup and starting process for the robots."
+      },
+      {
+        "question": "Do the lights have to be on?",
+        "topic": "operations",
+        "context": "Understanding if lighting conditions affect robot operation."
+      },
+      {
+        "question": "Is this something we buy? Is this something we lease? Is this something that is a, you know, robot as a service?",
+        "topic": "pricing",
+        "context": "Clarifying the purchasing and leasing options for the robots."
+      },
+      {
+        "question": "Is there an actual usage parameter about these robots where you can't use them more than X?",
+        "topic": "pricing",
+        "context": "Inquiring about usage limitations under the lease agreement."
+      },
+      {
+        "question": "At the end of the three-year lease period, what does the end of the lease period look like here?",
+        "topic": "pricing",
+        "context": "Understanding options at the end of the lease period."
+      },
+      {
+        "question": "Does it recognize spills and change its mode?",
+        "topic": "operations",
+        "context": "Inquiring about the robot's ability to detect and respond to spills."
+      }
+    ],
+    "objections": [
+      {
+        "objection": "It's a math question and it's a finance question of, you know, do you want to save five or seven thousand dollars over three years?",
+        "category": "budget",
+        "context": "Evaluating the financial implications of leasing versus buying."
+      }
+    ],
+    "buying_signals": [
+      {
+        "signal": "Interest in understanding the operational details and pricing models.",
+        "strength": "moderate"
+      }
+    ],
+    "timeline_context": {
+      "urgency": "soon",
+      "details": "Target open date is Q1 2026."
+    },
+    "_source": "Pickleball Club of Georgia Operation Autopilot Introduction.pdf"
+  },
+  {
+    "facility_profile": {
+      "name": "Rally House",
+      "type": "multi-location pickleball facility",
+      "court_count": null,
+      "court_surface": "tan",
+      "square_footage": null,
+      "staff_size": null,
+      "notable_details": [
+        "Facility has a janitor closet with power, hot and cold water.",
+        "Facility is considering expanding to multiple locations.",
+        "Facility hosts large events, such as a grand opening with 600 attendees."
+      ]
+    },
+    "pain_points": [
+      {
+        "category": "quality",
+        "customer_quote": "This was just mopped yesterday. Can you see that or no?",
+        "context": "The customer is concerned about visible stains and splotches on the floor despite recent cleaning."
+      },
+      {
+        "category": "labor",
+        "customer_quote": "I can't tell you how many hours I clean a day just to keep.",
+        "context": "The customer is spending excessive time cleaning the facility manually."
+      },
+      {
+        "category": "cost",
+        "customer_quote": "We're profitable but not highly profitable. And so we're counting our pennies.",
+        "context": "The customer is concerned about the cost of cleaning services and potential new investments."
+      }
+    ],
+    "questions_asked": [
+      {
+        "question": "Does CC go back to the home like a Roomba or not really?",
+        "topic": "operations",
+        "context": "The customer is inquiring about the robot's operational capabilities and how it functions autonomously."
+      },
+      {
+        "question": "What all is involved with the paperwork?",
+        "topic": "operations",
+        "context": "The customer is asking about the leasing process and requirements for acquiring the cleaning robot."
+      }
+    ],
+    "objections": [
+      {
+        "objection": "We're a startup. I mean, we have a nice facility, but we're definitely like, we're profitable but not highly profitable.",
+        "category": "budget",
+        "context": "The customer is concerned about the affordability of the cleaning robot given their current financial situation."
+      }
+    ],
+    "buying_signals": [
+      {
+        "signal": "I think this is. This doesn't make sense for us. I mean, I know Sarah's been literally breaking her back, so I'd like to, you know, take that off of her to do list.",
+        "strength": "strong"
+      }
+    ],
+    "timeline_context": {
+      "urgency": "soon",
+      "details": "The customer is considering signing the lease by the end of the month to take advantage of the promotional offer."
+    },
+    "_source": "Rally House Facility Meeting Recording.pdf"
+  },
+  {
+    "facility_profile": {
+      "name": "Pickleville",
+      "type": "indoor and outdoor pickleball",
+      "court_count": 15,
+      "court_surface": null,
+      "square_footage": null,
+      "staff_size": null,
+      "notable_details": [
+        "Nine indoor courts and six outdoor courts",
+        "Nets divide courts and hang on the ground an inch or two"
+      ]
+    },
+    "pain_points": [
+      {
+        "category": "quality",
+        "customer_quote": "We've got courts that we don't feel like we do a good job cleaning.",
+        "context": "The customer is concerned about the effectiveness of their current cleaning methods."
+      },
+      {
+        "category": "cost",
+        "customer_quote": "It's quite a difference in expense to have the machine versus us doing it in house.",
+        "context": "The customer is comparing the cost of manual cleaning versus using the cleaning robot."
+      },
+      {
+        "category": "court_preservation",
+        "customer_quote": "It's a pretty bad situation when, you know, clubs are just opening up and they're already resurfacing.",
+        "context": "The customer is concerned about the wear and tear on courts from current cleaning methods."
+      }
+    ],
+    "questions_asked": [
+      {
+        "question": "What is the run time of the machine? How many square feet can it clean per charge?",
+        "topic": "operations",
+        "context": "The customer is trying to understand the efficiency and coverage of the cleaning robot."
+      },
+      {
+        "question": "Do you have an idea on what that fee is?",
+        "topic": "pricing",
+        "context": "The customer is inquiring about the setup fee for the cleaning robot."
+      },
+      {
+        "question": "How does that work? Does that. Yes. You suggest we need to pick those up every time we turn it on or. What's the thought there?",
+        "topic": "compatibility",
+        "context": "The customer is concerned about how the robot navigates around obstacles like chairs and tables."
+      }
+    ],
+    "objections": [
+      {
+        "objection": "It's probably outside the amount that we want to spend on a machine.",
+        "category": "budget",
+        "context": "The customer feels the cost of the robot is too high compared to their current spending."
+      },
+      {
+        "objection": "It's easily double what I spend on labor at the moment.",
+        "category": "price",
+        "context": "The customer is comparing the monthly lease cost to their current labor expenses."
+      }
+    ],
+    "buying_signals": [
+      {
+        "signal": "I'd say keep me in your file if you guys think about reducing the price a little bit each month.",
+        "strength": "weak"
+      }
+    ],
+    "timeline_context": {
+      "urgency": "exploring",
+      "details": "The customer is open to future discussions if pricing changes."
+    },
+    "_source": "Pickleville x Operation Autopilot Meeting Recording.pdf"
+  },
+  {
+    "facility_profile": {
+      "name": "Del Norte Athletic Club",
+      "type": "multi-sport (pickleball and tennis)",
+      "court_count": 11,
+      "court_surface": null,
+      "square_footage": null,
+      "staff_size": null,
+      "notable_details": [
+        "Owned by a church and operates as a nonprofit",
+        "Built in 1957 with thin margins",
+        "Has two large pools that are leaking",
+        "Facility includes a gym with rubberized mats"
+      ]
+    },
+    "pain_points": [
+      {
+        "category": "court_preservation",
+        "customer_quote": "The courts get pretty dusty. I'm not sure why or how. They just do.",
+        "context": "Dust accumulation on courts affects member experience and performance."
+      },
+      {
+        "category": "labor",
+        "customer_quote": "It's taking quite a while. I think like an hour and a half or something like that.",
+        "context": "Current manual cleaning process is time-consuming."
+      },
+      {
+        "category": "cost",
+        "customer_quote": "We don't have really much additional expenditure to put out for this beyond what we're, you know, already doing and paying our, you know, custodial workers and our facilities folks.",
+        "context": "Limited budget for additional expenses."
+      }
+    ],
+    "questions_asked": [
+      {
+        "question": "Is there any difference? I know it's a much larger area.",
+        "topic": "compatibility",
+        "context": "Inquiring about the robot's ability to clean both pickleball and tennis courts."
+      },
+      {
+        "question": "How it gets from these courts and gets up the step over there, how it even gets to the courts and gets set up?",
+        "topic": "operations",
+        "context": "Concerns about the robot's mobility and setup across different areas."
+      }
+    ],
+    "objections": [
+      {
+        "objection": "I see someone's going to have to be involved in that. There's going to have to be manual intervention, I would assume.",
+        "category": "technical",
+        "context": "Concerns about the need for manual intervention in moving the robot."
+      },
+      {
+        "objection": "For me it's not a no brainer, but I'd say it's something that is a maybe.",
+        "category": "trust",
+        "context": "Hesitation in seeing the full value and ease of implementation."
+      }
+    ],
+    "buying_signals": [
+      {
+        "signal": "I would say for me it's not a no brainer, but I'd say it's something that is a maybe.",
+        "strength": "moderate"
+      }
+    ],
+    "timeline_context": {
+      "urgency": "exploring",
+      "details": "Considering the cost-benefit and planning to discuss further in a follow-up meeting."
+    },
+    "_source": "Del Norte Athletic Club Operation Autopilot Introduction (1).pdf"
+  },
+  {
+    "facility_profile": {
+      "name": null,
+      "type": "sports complex",
+      "court_count": 9,
+      "court_surface": null,
+      "square_footage": null,
+      "staff_size": null,
+      "notable_details": [
+        "existing sports complex",
+        "professional installer from Chicago coming to do courts"
+      ]
+    },
+    "pain_points": [
+      {
+        "category": "labor",
+        "customer_quote": "The manpower, exactly what you say in your brochure.",
+        "context": "Current cleaning requires significant manpower."
+      },
+      {
+        "category": "cost",
+        "customer_quote": "That's also like your staff time, right?",
+        "context": "Concern about the hidden costs of staff time for cleaning."
+      }
+    ],
+    "questions_asked": [
+      {
+        "question": "So the million dollar question, how, what's the process? How much, how the work?",
+        "topic": "pricing",
+        "context": "Inquiring about the cost and process of acquiring the cleaning robot."
+      },
+      {
+        "question": "Now, is there anyone that you have that's even locally that has these or you actually see one?",
+        "topic": "compatibility",
+        "context": "Interested in local references or existing users of the product."
+      }
+    ],
+    "objections": [],
+    "buying_signals": [
+      {
+        "signal": "I'm leaning towards it.",
+        "strength": "strong"
+      },
+      {
+        "signal": "I think it's a really cool thing to do.",
+        "strength": "strong"
+      }
+    ],
+    "timeline_context": {
+      "urgency": "soon",
+      "details": "Meeting with business partner to review information."
+    },
+    "_source": "Mike Turpin Abhinav Anand Meeting Recording.pdf"
+  },
+  {
+    "facility_profile": {
+      "name": "The Picklr Tempe",
+      "type": "outdoor pickleball",
+      "court_count": 8,
+      "court_surface": "acrylic",
+      "square_footage": null,
+      "staff_size": null,
+      "notable_details": [
+        "Facility has been open for 10 months",
+        "Around 600 to 650 members",
+        "Two other locations being built in the East Valley",
+        "Possible takeover of two other facilities in Mesa and Peoria"
+      ]
+    },
+    "pain_points": [
+      {
+        "category": "time",
+        "customer_quote": "But yeah, I mean, if I could have a robot doing it versus me doing it.",
+        "context": "Ryan cleans the courts sporadically and sees value in automating the process."
+      },
+      {
+        "category": "court_preservation",
+        "customer_quote": "If we can extend the life of the surface, you know, that helps with the model of, you know, our pro formas.",
+        "context": "Concern about the longevity of court surfaces and the potential cost of resurfacing."
+      }
+    ],
+    "questions_asked": [
+      {
+        "question": "What's the charge time? Like how long you gotta charge. How long does it last?",
+        "topic": "operations",
+        "context": "Ryan is interested in the operational details of the cleaning robot."
+      },
+      {
+        "question": "Where are these manufactured currently? Do you guys do them in house?",
+        "topic": "technical",
+        "context": "Ryan is inquiring about the origin and manufacturing of the cleaning robots."
+      }
+    ],
+    "objections": [
+      {
+        "objection": "Cash flow is critical for a club just starting out.",
+        "category": "budget",
+        "context": "Ryan is cautious about the financial commitment given the club's current stage."
+      }
+    ],
+    "buying_signals": [
+      {
+        "signal": "Ryan expressed interest in seeing a demo at his facility.",
+        "strength": "strong"
+      },
+      {
+        "signal": "Interest in technology and automating cleaning processes.",
+        "strength": "moderate"
+      }
+    ],
+    "timeline_context": {
+      "urgency": "future",
+      "details": "Ryan is considering automation for year two or three, depending on financials and effectiveness."
+    },
+    "_source": "Picklr Tempe Operation Autopilot Introduction.pdf"
+  },
+  {
+    "facility_profile": {
+      "name": null,
+      "type": "multi-sport",
+      "court_count": 15,
+      "court_surface": null,
+      "square_footage": null,
+      "staff_size": null,
+      "notable_details": [
+        "Family-owned business",
+        "Five indoor locations",
+        "Includes pickleball, basketball, and gymnastics facilities"
+      ]
+    },
+    "pain_points": [
+      {
+        "category": "time",
+        "customer_quote": "it takes a lot of time",
+        "context": "Currently manually cleaning courts themselves"
+      },
+      {
+        "category": "labor",
+        "customer_quote": "if we could take time away from that and give time back to the worker to do something else a little bit more.",
+        "context": "Workers are currently cleaning the courts during their shifts"
+      },
+      {
+        "category": "cost",
+        "customer_quote": "The amounts that I'm hearing are high. Make that money back. I don't know if the investment worth it.",
+        "context": "Concerns about the cost of the cleaning robot compared to current expenses"
+      }
+    ],
+    "questions_asked": [
+      {
+        "question": "Was there a price point on the machine?",
+        "topic": "pricing",
+        "context": "Inquiring about the cost of the cleaning robot"
+      },
+      {
+        "question": "What are the guarantees that we get if you try it and you're not happy with it?",
+        "topic": "trust",
+        "context": "Concerns about satisfaction and return policy"
+      },
+      {
+        "question": "Is this the only model available?",
+        "topic": "compatibility",
+        "context": "Interested in different models that might suit their needs better"
+      },
+      {
+        "question": "What are the dimensions of the machine?",
+        "topic": "technical",
+        "context": "Understanding the size for transportation purposes"
+      }
+    ],
+    "objections": [
+      {
+        "objection": "The amounts that I'm hearing are high. Make that money back. I don't know if the investment worth it.",
+        "category": "budget",
+        "context": "Concerns about the financial feasibility of the investment"
+      },
+      {
+        "objection": "I personally feel like it would have to be a third of like a fraction of the cost for it to make sense.",
+        "category": "price",
+        "context": "The current pricing does not align with their budget for a facility with only three courts"
+      }
+    ],
+    "buying_signals": [
+      {
+        "signal": "I think we might be interested in actually just buying it out.",
+        "strength": "moderate"
+      },
+      {
+        "signal": "We have a bunch of other locations though, that it could be used at if you.",
+        "strength": "moderate"
+      }
+    ],
+    "timeline_context": {
+      "urgency": "exploring",
+      "details": "Currently exploring options and waiting for tailored solutions and potential promotions"
+    },
+    "_source": "Mary Jo Greaves Operation Autopilot Meeting Recording.pdf"
+  },
+  {
+    "facility_profile": {
+      "name": null,
+      "type": "pickleball",
+      "court_count": null,
+      "court_surface": null,
+      "square_footage": null,
+      "staff_size": null,
+      "notable_details": [
+        "Located in Rhode Island"
+      ]
+    },
+    "pain_points": [
+      {
+        "category": "time",
+        "customer_quote": "For the sake of that my courts need to be clean on a more consistent basis.",
+        "context": "Kevin wants to increase the frequency of court cleaning from twice a month to once a week."
+      },
+      {
+        "category": "cost",
+        "customer_quote": "We're looking at a service, cleaning service that will charge, you know, 250 a week. That's 500 bucks. That's a thousand.",
+        "context": "Current cleaning service costs are high for the desired cleaning frequency."
+      }
+    ],
+    "questions_asked": [
+      {
+        "question": "How many clubs are you in right now?",
+        "topic": "operations",
+        "context": "Kevin is interested in understanding the market presence and reliability of the product."
+      }
+    ],
+    "objections": [
+      {
+        "objection": "I just have to wrap my head around, you know, the costs and stuff like that.",
+        "category": "budget",
+        "context": "Kevin is concerned about the overall cost of implementing the cleaning robot solution."
+      }
+    ],
+    "buying_signals": [
+      {
+        "signal": "I do. Yeah.",
+        "strength": "moderate"
+      }
+    ],
+    "timeline_context": {
+      "urgency": "soon",
+      "details": "Kevin is considering the purchase and needs to discuss with partners, indicating a decision may be made shortly."
+    },
+    "_source": "Kevin OBrien Operation Autopilot Meeting Recording.pdf"
+  },
+  {
+    "facility_profile": {
+      "name": "PickleSpot",
+      "type": "indoor pickleball",
+      "court_count": null,
+      "court_surface": "cushion surface",
+      "square_footage": null,
+      "staff_size": null,
+      "notable_details": [
+        "Located in Orange, Connecticut",
+        "New facility with a soup to nuts build out"
+      ]
+    },
+    "pain_points": [
+      {
+        "category": "cost",
+        "customer_quote": "a budget of 1,000 or $30,000 for a unit is not something that we're, we have an appetite for at this point.",
+        "context": "Discussing the high cost of cleaning equipment and budget constraints."
+      },
+      {
+        "category": "court_preservation",
+        "customer_quote": "it's not designed for sensitive surfaces. So what's going to happen is in six months your courts are going to be ripped to shreds.",
+        "context": "Concerns about using inappropriate cleaning equipment that could damage the court surfaces."
+      }
+    ],
+    "questions_asked": [
+      {
+        "question": "How do you get service though, like in Connecticut when you're in Chicago?",
+        "topic": "operations",
+        "context": "Inquiring about the logistics of servicing the equipment from a different location."
+      },
+      {
+        "question": "What's the cost of that unit right there that you're showing us?",
+        "topic": "pricing",
+        "context": "Asking about the pricing of the cleaning robot being demonstrated."
+      }
+    ],
+    "objections": [
+      {
+        "objection": "I feel like we're sort of now talking to a third party who sells a lot of different equipment.",
+        "category": "trust",
+        "context": "Confusion about the sales process and the parties involved."
+      },
+      {
+        "objection": "Right now. I think a lease is not something we're looking for and we're also not looking to spend, you know, that outlay of $25,000.",
+        "category": "budget",
+        "context": "Concerns about the financial commitment required for leasing or purchasing the equipment."
+      }
+    ],
+    "buying_signals": [
+      {
+        "signal": "It's something that we would like to have a different solution for.",
+        "strength": "weak"
+      }
+    ],
+    "timeline_context": {
+      "urgency": "exploring",
+      "details": "Currently managing with existing methods and not in a rush to purchase new equipment."
+    },
+    "_source": "PickleSpot Indoor Courts Operation Autopilot Introduction.pdf"
+  },
+  {
+    "facility_profile": {
+      "name": null,
+      "type": "multi-sport",
+      "court_count": 11,
+      "court_surface": "acrotech Cushion X",
+      "square_footage": null,
+      "staff_size": 2,
+      "notable_details": [
+        "Opening in the next two weeks",
+        "Another 10 court facility opening in February or March",
+        "Located in South Boston and Charlestown"
+      ]
+    },
+    "pain_points": [
+      {
+        "category": "court_preservation",
+        "customer_quote": "my biggest concern is, you know, making sure we're spending a lot of money on our courts with we're using acrotech cushion X cords. Just making sure they maintain as long as possible.",
+        "context": "Concern about maintaining the quality and longevity of the courts"
+      },
+      {
+        "category": "cost",
+        "customer_quote": "minimize my cost for cleaning this facility as well.",
+        "context": "Looking to reduce cleaning costs"
+      },
+      {
+        "category": "time",
+        "customer_quote": "she's spending like almost eight hours a day just cleaning every single bit of that facility.",
+        "context": "Current cleaning process is time-consuming"
+      }
+    ],
+    "questions_asked": [
+      {
+        "question": "What do people generally have like it dedicated in an open space that it can come back to and go out without? Or do they have it in a closet and have to let it out?",
+        "topic": "operations",
+        "context": "Asked about the placement and operation of the cleaning robot"
+      },
+      {
+        "question": "I'm assuming people use it on your other flooring in the facility as well too, to clean, essentially flooring like. Like lvt. Like that we have throughout. In between Quartz.",
+        "topic": "compatibility",
+        "context": "Inquiring about the robot's use on different flooring types"
+      },
+      {
+        "question": "What is usually like the schedule that most clubs run, Is it daily for courts?",
+        "topic": "operations",
+        "context": "Asked about the typical cleaning schedule for the robot"
+      },
+      {
+        "question": "How long does it usually take to get up and running?",
+        "topic": "operations",
+        "context": "Inquiring about the timeline for installation and operation"
+      }
+    ],
+    "objections": [
+      {
+        "objection": "the more you've seen it, the more frequent it doesn't last as long because it breaks down the cord.",
+        "category": "technical",
+        "context": "Concern about frequent cleaning affecting court longevity"
+      }
+    ],
+    "buying_signals": [
+      {
+        "signal": "That would be great. And obviously we have a second. We would be looking to get a second one if we do this, you know, at some point next year for the other facility as well too.",
+        "strength": "strong"
+      }
+    ],
+    "timeline_context": {
+      "urgency": "soon",
+      "details": "Looking to have the robot up and running in time for the grand opening in the next two weeks"
+    },
+    "_source": "Alex Karsos Operation Autopilot Meeting Recording.pdf"
+  },
+  {
+    "facility_profile": {
+      "name": "Ace Pickleball Club",
+      "type": "indoor pickleball",
+      "court_count": 13,
+      "court_surface": "half inch thick cushioned surface, exterior outdoor court indoors",
+      "square_footage": null,
+      "staff_size": null,
+      "notable_details": [
+        "Part of a franchise",
+        "First club on the west coast",
+        "Opened for almost a year",
+        "Plans to open another location in Phoenix"
+      ]
+    },
+    "pain_points": [
+      {
+        "category": "court_preservation",
+        "customer_quote": "The same court surface was installed at our flagship location and a year and a half into it they had to redo the surface.",
+        "context": "Concerns about the longevity of the court surface and maintenance challenges."
+      },
+      {
+        "category": "labor",
+        "customer_quote": "It's all in house. It's all like employees.",
+        "context": "Current cleaning is managed by staff with manual processes."
+      },
+      {
+        "category": "quality",
+        "customer_quote": "I'm seeing a lot of these issues that the normal cleaning is not addressing.",
+        "context": "Existing cleaning methods are not effectively maintaining court cleanliness."
+      }
+    ],
+    "questions_asked": [
+      {
+        "question": "So I mean, if I understand correctly, so it's like a rental of the machine.",
+        "topic": "pricing",
+        "context": "Clarification on the financial model for acquiring the cleaning robot."
+      },
+      {
+        "question": "Does it have a water or like how big is the water reservoir?",
+        "topic": "technical",
+        "context": "Understanding the technical specifications of the cleaning robot."
+      },
+      {
+        "question": "What is the charge time on that? Like how long does it take to get like eight hours out of it?",
+        "topic": "technical",
+        "context": "Inquiring about the battery life and charging time of the cleaning robot."
+      }
+    ],
+    "objections": [
+      {
+        "objection": "We also need to make sure that the numbers make sense and that you know, we're not just investing in something for ease of use.",
+        "category": "budget",
+        "context": "Concern about ensuring the investment is financially justified."
+      }
+    ],
+    "buying_signals": [
+      {
+        "signal": "I think it's practical. Fills the void that we currently have.",
+        "strength": "strong"
+      }
+    ],
+    "timeline_context": {
+      "urgency": "soon",
+      "details": "Plans to review cleaning costs over the next week and discuss further on the 22nd."
+    },
+    "_source": "Operation Autopilot Ace Pickleball Club Introduction (2).pdf"
+  },
+  {
+    "facility_profile": {
+      "name": null,
+      "type": "indoor pickleball",
+      "court_count": 2,
+      "court_surface": null,
+      "square_footage": null,
+      "staff_size": null,
+      "notable_details": [
+        "facility opened a year ago",
+        "manual cleaning process using hose, squeegee, and leaf blower"
+      ]
+    },
+    "pain_points": [
+      {
+        "category": "cost",
+        "customer_quote": "I'm not at a point right now where I can afford to pay that kind of money.",
+        "context": "Discussing the cost of the cleaning robot and the financial situation of the facility."
+      },
+      {
+        "category": "labor",
+        "customer_quote": "I have to be my own floor scrubber.",
+        "context": "Describing the manual effort required to maintain the courts."
+      },
+      {
+        "category": "court_preservation",
+        "customer_quote": "I'm worried about the degradation of the court with the, you know, I gotta find the right brushes.",
+        "context": "Concerns about the impact of cleaning equipment on court surfaces."
+      }
+    ],
+    "questions_asked": [
+      {
+        "question": "What is a price range that you would feel more comfortable with?",
+        "topic": "pricing",
+        "context": "Discussing the affordability of the cleaning robot."
+      }
+    ],
+    "objections": [
+      {
+        "objection": "I don't need it autonomous. I mean, I can do it myself.",
+        "category": "technical",
+        "context": "Expressing that current manual cleaning methods are sufficient."
+      },
+      {
+        "objection": "Right now, a thousand bucks a month I can't afford.",
+        "category": "budget",
+        "context": "Discussing the financial constraints of the facility."
+      }
+    ],
+    "buying_signals": [
+      {
+        "signal": "I think it's a really cool idea and option.",
+        "strength": "moderate"
+      }
+    ],
+    "timeline_context": {
+      "urgency": "exploring",
+      "details": "Currently not in a financial position to purchase but interested in the future."
+    },
+    "_source": "Zero Zero Two Pickleball Operation Autopilot Introduction.pdf"
+  },
+  {
+    "facility_profile": {
+      "name": null,
+      "type": "indoor pickleball",
+      "court_count": 11,
+      "court_surface": "pro cushion style courts",
+      "square_footage": null,
+      "staff_size": null,
+      "notable_details": [
+        "Regional developers expanding throughout Atlanta",
+        "Located on the west end of the Atlanta Beltline",
+        "Using a tenant S7 machine for cleaning"
+      ]
+    },
+    "pain_points": [
+      {
+        "category": "quality",
+        "customer_quote": "Not the results we'd like to see.",
+        "context": "Current cleaning results are unsatisfactory with existing equipment."
+      },
+      {
+        "category": "court_preservation",
+        "customer_quote": "We don't want to over clean, of course, because we don't want to wear off the surface.",
+        "context": "Concern about cleaning frequency affecting court surface longevity."
+      }
+    ],
+    "questions_asked": [
+      {
+        "question": "How does it actually clean the courts? Does it actually do any... Is it a significant improvement from what we already have?",
+        "topic": "cleaning",
+        "context": "Interest in understanding the effectiveness of the cleaning robot compared to current equipment."
+      },
+      {
+        "question": "Do you all offer like a trial so you could show us how it works on the court?",
+        "topic": "operations",
+        "context": "Interest in seeing the product in action before committing."
+      },
+      {
+        "question": "What is the lease structure?",
+        "topic": "pricing",
+        "context": "Clarification on the financial commitment required for the product."
+      }
+    ],
+    "objections": [
+      {
+        "objection": "8.99 for a small business, like, we're our own business separate from Will, like, we're a franchisee from them. 8.99 a month is prohibitive.",
+        "category": "price",
+        "context": "The monthly cost of the cleaning robot is considered too high for their budget."
+      }
+    ],
+    "buying_signals": [
+      {
+        "signal": "I'd love to see the information.",
+        "strength": "moderate"
+      }
+    ],
+    "timeline_context": {
+      "urgency": "exploring",
+      "details": "Currently evaluating options; interested in seeing product information and potential ROI."
+    },
+    "_source": "Daniel Hardeman Operation Autopilot Meeting Recording.pdf"
+  },
+  {
+    "facility_profile": {
+      "name": null,
+      "type": "indoor pickleball",
+      "court_count": 17,
+      "court_surface": "Sportmaster U.S. open court surfaces",
+      "square_footage": 60000,
+      "staff_size": null,
+      "notable_details": [
+        "Facility is located just outside of Milwaukee",
+        "Second location being built in Green Bay",
+        "Plans for expansion to Minneapolis",
+        "Facility includes a championship court",
+        "Frequent visits from sports celebrities"
+      ]
+    },
+    "pain_points": [
+      {
+        "category": "labor",
+        "customer_quote": "I've got to have a person and I've got to use... a couple of them are 68 year old women. Well, they're not going to operate a manual floor scrubbing piece of equipment.",
+        "context": "Discussing the challenges of using manual floor scrubbers with current staff."
+      },
+      {
+        "category": "court_preservation",
+        "customer_quote": "You're going to run it into the post and the fence and the net post.",
+        "context": "Concerns about potential damage from manual scrubbers operated by staff."
+      },
+      {
+        "category": "time",
+        "customer_quote": "Right now we are renting about once a month. But I'd like to be doing it more.",
+        "context": "Desire to clean courts more frequently than current rental schedule allows."
+      }
+    ],
+    "questions_asked": [
+      {
+        "question": "What's the size of it and how broad is the, you know, is each pass?",
+        "topic": "operations",
+        "context": "Inquiring about the physical dimensions and cleaning path of the robot."
+      },
+      {
+        "question": "How battery life, how long does the battery run typically?",
+        "topic": "operations",
+        "context": "Understanding the operational duration of the cleaning robot."
+      }
+    ],
+    "objections": [
+      {
+        "objection": "When do you expect to have a unit available?",
+        "category": "timing",
+        "context": "Concern about the availability and lead time for obtaining the cleaning robot."
+      }
+    ],
+    "buying_signals": [
+      {
+        "signal": "I'd like to see it because I'm the president of the FAC which is the Franchise Advisory Committee.",
+        "strength": "strong"
+      },
+      {
+        "signal": "This is a grand opportunity for all of us to really jump start it and move it forward.",
+        "strength": "strong"
+      }
+    ],
+    "timeline_context": {
+      "urgency": "soon",
+      "details": "Interest in having a unit available by early December for installation."
+    },
+    "_source": "Gregory Straub Operation Autopilot Meeting.pdf"
+  },
+  {
+    "facility_profile": {
+      "name": null,
+      "type": "multi-sport",
+      "court_count": 14,
+      "court_surface": "pickle roll with high quality paint and Lay Cult paint",
+      "square_footage": null,
+      "staff_size": null,
+      "notable_details": [
+        "Facility has a turf area for events",
+        "Uses pickle roll which is glued to the ground"
+      ]
+    },
+    "pain_points": [
+      {
+        "category": "court_preservation",
+        "customer_quote": "we felt like it was too rough and it could damage the surface",
+        "context": "Concern about previous vacuum use being too rough on court surfaces"
+      }
+    ],
+    "questions_asked": [
+      {
+        "question": "it seems like you can customize what the robot does?",
+        "topic": "compatibility",
+        "context": "Concern about the robot's impact on court surfaces with layers of paint"
+      },
+      {
+        "question": "What about like, I'm assuming you have to charge. Charge cc.",
+        "topic": "operations",
+        "context": "Inquiring about the charging process for the cleaning robot"
+      },
+      {
+        "question": "How do you recall, like approximately what's the installation fee?",
+        "topic": "pricing",
+        "context": "Clarifying the cost details related to installation"
+      }
+    ],
+    "objections": [],
+    "buying_signals": [
+      {
+        "signal": "I really love the idea and I'll definitely be in catch.",
+        "strength": "strong"
+      }
+    ],
+    "timeline_context": {
+      "urgency": "exploring",
+      "details": "Needs to discuss with CEO and VP; CEO is out of town until mid next week"
+    },
+    "_source": "Martina Kostalova Operation Autopilot Meeting (2).pdf"
+  },
+  {
+    "facility_profile": {
+      "name": "Jewel Basin Center",
+      "type": "multi-sport with a focus on pickleball",
+      "court_count": 10,
+      "court_surface": "acrylic, concrete silica embedded acrylic sanctioned surface multilayer on asphalt",
+      "square_footage": 8000,
+      "staff_size": null,
+      "notable_details": [
+        "Located in northwest Montana near Glacier National Park",
+        "Four indoor courts",
+        "High traffic and busy facility",
+        "Facility is well-known and has been featured in magazines"
+      ]
+    },
+    "pain_points": [
+      {
+        "category": "labor",
+        "customer_quote": "It's a high school kid that I hired to come twice a week.",
+        "context": "Currently relies on a high school student for cleaning, which is not a professional solution."
+      },
+      {
+        "category": "quality",
+        "customer_quote": "It's not really a problem until the winter comes, when. Then we have to increase the frequency.",
+        "context": "Cleaning becomes more challenging in winter due to increased dirt from members."
+      }
+    ],
+    "questions_asked": [
+      {
+        "question": "What does it take to prep it, to clean it, you know, to kind of turn it around, make it available for the next cycle?",
+        "topic": "operations",
+        "context": "Jim is trying to understand the operational requirements of the cleaning robot."
+      },
+      {
+        "question": "Do you recommend priming it first? Priming the court surface first with some sort of sprayed water or emulsifier?",
+        "topic": "compatibility",
+        "context": "Jim is inquiring about the preparation process for using the cleaning robot on their specific court surface."
+      },
+      {
+        "question": "How long does it take to drain and wipe out? Clean.",
+        "topic": "operations",
+        "context": "Jim is interested in understanding the maintenance and cleaning cycle of the robot."
+      }
+    ],
+    "objections": [
+      {
+        "objection": "This looks smaller and lighter weight. It's kind of Roomba. Like it's bigger and heavier than a Roomba. But I'm, I know what Roombas do versus what a commercial Vacuum cleaner does, and it ain't the same.",
+        "category": "technical",
+        "context": "Jim is concerned about the cleaning effectiveness of the robot compared to his current equipment."
+      },
+      {
+        "objection": "Any of these packages are going to be a fair amount more than we spend. So you're not going to save us money.",
+        "category": "price",
+        "context": "Jim is concerned about the cost-effectiveness of the robot compared to his current cleaning solution."
+      }
+    ],
+    "buying_signals": [
+      {
+        "signal": "Jim is interested in the convenience of cleaning more often and better.",
+        "strength": "moderate"
+      }
+    ],
+    "timeline_context": {
+      "urgency": "exploring",
+      "details": "Jim is evaluating the value of the product, particularly for the winter months when cleaning needs increase."
+    },
+    "_source": "Jewel Basin Center Operation Autopilot Introduction (1).pdf"
+  }
+]

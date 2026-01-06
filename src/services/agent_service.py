@@ -13,6 +13,7 @@ from src.models.message import MessageRole
 from src.schemas.message import MessageResponse
 from src.services.conversation_service import ConversationService
 from src.services.rag_service import RAGService, get_rag_service
+from src.services.sales_knowledge_service import SalesKnowledgeService, get_sales_knowledge_service
 
 logger = logging.getLogger(__name__)
 
@@ -65,16 +66,22 @@ Guidelines:
 class AgentService:
     """Service for AI agent interactions."""
 
-    def __init__(self, rag_service: RAGService | None = None) -> None:
+    def __init__(
+        self,
+        rag_service: RAGService | None = None,
+        sales_knowledge_service: SalesKnowledgeService | None = None,
+    ) -> None:
         """Initialize agent service.
 
         Args:
             rag_service: Optional RAG service for testing.
+            sales_knowledge_service: Optional sales knowledge service for testing.
         """
         self.client = get_openai_client()
         self.settings = get_settings()
         self.conversation_service = ConversationService()
         self._rag_service = rag_service
+        self._sales_knowledge_service = sales_knowledge_service
 
     @property
     def rag_service(self) -> RAGService:
@@ -82,6 +89,13 @@ class AgentService:
         if self._rag_service is None:
             self._rag_service = get_rag_service()
         return self._rag_service
+
+    @property
+    def sales_knowledge_service(self) -> SalesKnowledgeService:
+        """Get sales knowledge service."""
+        if self._sales_knowledge_service is None:
+            self._sales_knowledge_service = get_sales_knowledge_service()
+        return self._sales_knowledge_service
 
     def get_system_prompt(self, phase: ConversationPhase) -> str:
         """Get the system prompt for a conversation phase.
@@ -124,6 +138,23 @@ class AgentService:
             )
             if product_context:
                 system_prompt += f"\n\n{product_context}"
+
+        # Add phase-specific sales knowledge from real customer conversations
+        try:
+            if phase == ConversationPhase.DISCOVERY:
+                sales_knowledge = self.sales_knowledge_service.get_discovery_context()
+                if sales_knowledge:
+                    system_prompt += f"\n\n{sales_knowledge}"
+            elif phase == ConversationPhase.ROI:
+                sales_knowledge = self.sales_knowledge_service.get_roi_context()
+                if sales_knowledge:
+                    system_prompt += f"\n\n{sales_knowledge}"
+            elif phase == ConversationPhase.GREENLIGHT:
+                sales_knowledge = self.sales_knowledge_service.get_greenlight_context()
+                if sales_knowledge:
+                    system_prompt += f"\n\n{sales_knowledge}"
+        except Exception as e:
+            logger.warning(f"Failed to load sales knowledge: {e}")
 
         messages: list[dict[str, str]] = [
             {"role": "system", "content": system_prompt}

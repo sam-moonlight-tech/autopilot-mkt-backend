@@ -1,0 +1,272 @@
+[
+  {
+    "category": "labor",
+    "customer_quote": "It's just not sustainable long term with the size of our organization to keep up with it.",
+    "context": "Sara is primarily responsible for cleaning the courts, which is not sustainable.",
+    "source": "Sara Dawson Autopilot Meeting Recording.pdf"
+  },
+  {
+    "category": "quality",
+    "customer_quote": "The mopping doesn't work that well... you can still see the stains even after we mop.",
+    "context": "Current cleaning methods are not effective in removing stains.",
+    "source": "Sara Dawson Autopilot Meeting Recording.pdf"
+  },
+  {
+    "category": "cost",
+    "customer_quote": "The cost did go up for the vacuum service monthly.",
+    "context": "Engaged a janitorial service that increased costs.",
+    "source": "Sara Dawson Autopilot Meeting Recording.pdf"
+  },
+  {
+    "category": "health",
+    "customer_quote": "The backpack vacuum, it kills my shoulder.",
+    "context": "Sara experiences physical strain from using current cleaning equipment.",
+    "source": "Sara Dawson Autopilot Meeting Recording.pdf"
+  },
+  {
+    "category": "labor",
+    "customer_quote": "we pay people to currently, like, you know, sweep our courts, and we have issues sometimes with our sweepers and they break down",
+    "context": "Current manual sweeping process is labor-intensive and equipment is unreliable",
+    "source": "George Zink Operation Autopilot Meeting Recording.pdf"
+  },
+  {
+    "category": "quality",
+    "customer_quote": "The biggest thing that we found with vacuums is that tennis ball fuzz does not handle well.",
+    "context": "Current vacuums struggle with tennis ball fuzz, affecting cleaning quality",
+    "source": "George Zink Operation Autopilot Meeting Recording.pdf"
+  },
+  {
+    "category": "cost",
+    "customer_quote": "labor costs all in probably ballpark it at like 2,000 bucks a month",
+    "context": "Current cleaning costs are significant due to full-time maintenance staff",
+    "source": "George Zink Operation Autopilot Meeting Recording.pdf"
+  },
+  {
+    "category": "operations",
+    "customer_quote": "I want to understand how an automated cleaning system like this deals with individually fenced courts.",
+    "context": "Concern about how the cleaning robots will navigate individually fenced courts.",
+    "source": "Pickleball Club of Georgia Operation Autopilot Introduction.pdf"
+  },
+  {
+    "category": "quality",
+    "customer_quote": "This was just mopped yesterday. Can you see that or no?",
+    "context": "The customer is concerned about visible stains and splotches on the floor despite recent cleaning.",
+    "source": "Rally House Facility Meeting Recording.pdf"
+  },
+  {
+    "category": "labor",
+    "customer_quote": "I can't tell you how many hours I clean a day just to keep.",
+    "context": "The customer is spending excessive time cleaning the facility manually.",
+    "source": "Rally House Facility Meeting Recording.pdf"
+  },
+  {
+    "category": "cost",
+    "customer_quote": "We're profitable but not highly profitable. And so we're counting our pennies.",
+    "context": "The customer is concerned about the cost of cleaning services and potential new investments.",
+    "source": "Rally House Facility Meeting Recording.pdf"
+  },
+  {
+    "category": "quality",
+    "customer_quote": "We've got courts that we don't feel like we do a good job cleaning.",
+    "context": "The customer is concerned about the effectiveness of their current cleaning methods.",
+    "source": "Pickleville x Operation Autopilot Meeting Recording.pdf"
+  },
+  {
+    "category": "cost",
+    "customer_quote": "It's quite a difference in expense to have the machine versus us doing it in house.",
+    "context": "The customer is comparing the cost of manual cleaning versus using the cleaning robot.",
+    "source": "Pickleville x Operation Autopilot Meeting Recording.pdf"
+  },
+  {
+    "category": "court_preservation",
+    "customer_quote": "It's a pretty bad situation when, you know, clubs are just opening up and they're already resurfacing.",
+    "context": "The customer is concerned about the wear and tear on courts from current cleaning methods.",
+    "source": "Pickleville x Operation Autopilot Meeting Recording.pdf"
+  },
+  {
+    "category": "court_preservation",
+    "customer_quote": "The courts get pretty dusty. I'm not sure why or how. They just do.",
+    "context": "Dust accumulation on courts affects member experience and performance.",
+    "source": "Del Norte Athletic Club Operation Autopilot Introduction (1).pdf"
+  },
+  {
+    "category": "labor",
+    "customer_quote": "It's taking quite a while. I think like an hour and a half or something like that.",
+    "context": "Current manual cleaning process is time-consuming.",
+    "source": "Del Norte Athletic Club Operation Autopilot Introduction (1).pdf"
+  },
+  {
+    "category": "cost",
+    "customer_quote": "We don't have really much additional expenditure to put out for this beyond what we're, you know, already doing and paying our, you know, custodial workers and our facilities folks.",
+    "context": "Limited budget for additional expenses.",
+    "source": "Del Norte Athletic Club Operation Autopilot Introduction (1).pdf"
+  },
+  {
+    "category": "labor",
+    "customer_quote": "The manpower, exactly what you say in your brochure.",
+    "context": "Current cleaning requires significant manpower.",
+    "source": "Mike Turpin Abhinav Anand Meeting Recording.pdf"
+  },
+  {
+    "category": "cost",
+    "customer_quote": "That's also like your staff time, right?",
+    "context": "Concern about the hidden costs of staff time for cleaning.",
+    "source": "Mike Turpin Abhinav Anand Meeting Recording.pdf"
+  },
+  {
+    "category": "time",
+    "customer_quote": "But yeah, I mean, if I could have a robot doing it versus me doing it.",
+    "context": "Ryan cleans the courts sporadically and sees value in automating the process.",
+    "source": "Picklr Tempe Operation Autopilot Introduction.pdf"
+  },
+  {
+    "category": "court_preservation",
+    "customer_quote": "If we can extend the life of the surface, you know, that helps with the model of, you know, our pro formas.",
+    "context": "Concern about the longevity of court surfaces and the potential cost of resurfacing.",
+    "source": "Picklr Tempe Operation Autopilot Introduction.pdf"
+  },
+  {
+    "category": "time",
+    "customer_quote": "it takes a lot of time",
+    "context": "Currently manually cleaning courts themselves",
+    "source": "Mary Jo Greaves Operation Autopilot Meeting Recording.pdf"
+  },
+  {
+    "category": "labor",
+    "customer_quote": "if we could take time away from that and give time back to the worker to do something else a little bit more.",
+    "context": "Workers are currently cleaning the courts during their shifts",
+    "source": "Mary Jo Greaves Operation Autopilot Meeting Recording.pdf"
+  },
+  {
+    "category": "cost",
+    "customer_quote": "The amounts that I'm hearing are high. Make that money back. I don't know if the investment worth it.",
+    "context": "Concerns about the cost of the cleaning robot compared to current expenses",
+    "source": "Mary Jo Greaves Operation Autopilot Meeting Recording.pdf"
+  },
+  {
+    "category": "time",
+    "customer_quote": "For the sake of that my courts need to be clean on a more consistent basis.",
+    "context": "Kevin wants to increase the frequency of court cleaning from twice a month to once a week.",
+    "source": "Kevin OBrien Operation Autopilot Meeting Recording.pdf"
+  },
+  {
+    "category": "cost",
+    "customer_quote": "We're looking at a service, cleaning service that will charge, you know, 250 a week. That's 500 bucks. That's a thousand.",
+    "context": "Current cleaning service costs are high for the desired cleaning frequency.",
+    "source": "Kevin OBrien Operation Autopilot Meeting Recording.pdf"
+  },
+  {
+    "category": "cost",
+    "customer_quote": "a budget of 1,000 or $30,000 for a unit is not something that we're, we have an appetite for at this point.",
+    "context": "Discussing the high cost of cleaning equipment and budget constraints.",
+    "source": "PickleSpot Indoor Courts Operation Autopilot Introduction.pdf"
+  },
+  {
+    "category": "court_preservation",
+    "customer_quote": "it's not designed for sensitive surfaces. So what's going to happen is in six months your courts are going to be ripped to shreds.",
+    "context": "Concerns about using inappropriate cleaning equipment that could damage the court surfaces.",
+    "source": "PickleSpot Indoor Courts Operation Autopilot Introduction.pdf"
+  },
+  {
+    "category": "court_preservation",
+    "customer_quote": "my biggest concern is, you know, making sure we're spending a lot of money on our courts with we're using acrotech cushion X cords. Just making sure they maintain as long as possible.",
+    "context": "Concern about maintaining the quality and longevity of the courts",
+    "source": "Alex Karsos Operation Autopilot Meeting Recording.pdf"
+  },
+  {
+    "category": "cost",
+    "customer_quote": "minimize my cost for cleaning this facility as well.",
+    "context": "Looking to reduce cleaning costs",
+    "source": "Alex Karsos Operation Autopilot Meeting Recording.pdf"
+  },
+  {
+    "category": "time",
+    "customer_quote": "she's spending like almost eight hours a day just cleaning every single bit of that facility.",
+    "context": "Current cleaning process is time-consuming",
+    "source": "Alex Karsos Operation Autopilot Meeting Recording.pdf"
+  },
+  {
+    "category": "court_preservation",
+    "customer_quote": "The same court surface was installed at our flagship location and a year and a half into it they had to redo the surface.",
+    "context": "Concerns about the longevity of the court surface and maintenance challenges.",
+    "source": "Operation Autopilot Ace Pickleball Club Introduction (2).pdf"
+  },
+  {
+    "category": "labor",
+    "customer_quote": "It's all in house. It's all like employees.",
+    "context": "Current cleaning is managed by staff with manual processes.",
+    "source": "Operation Autopilot Ace Pickleball Club Introduction (2).pdf"
+  },
+  {
+    "category": "quality",
+    "customer_quote": "I'm seeing a lot of these issues that the normal cleaning is not addressing.",
+    "context": "Existing cleaning methods are not effectively maintaining court cleanliness.",
+    "source": "Operation Autopilot Ace Pickleball Club Introduction (2).pdf"
+  },
+  {
+    "category": "cost",
+    "customer_quote": "I'm not at a point right now where I can afford to pay that kind of money.",
+    "context": "Discussing the cost of the cleaning robot and the financial situation of the facility.",
+    "source": "Zero Zero Two Pickleball Operation Autopilot Introduction.pdf"
+  },
+  {
+    "category": "labor",
+    "customer_quote": "I have to be my own floor scrubber.",
+    "context": "Describing the manual effort required to maintain the courts.",
+    "source": "Zero Zero Two Pickleball Operation Autopilot Introduction.pdf"
+  },
+  {
+    "category": "court_preservation",
+    "customer_quote": "I'm worried about the degradation of the court with the, you know, I gotta find the right brushes.",
+    "context": "Concerns about the impact of cleaning equipment on court surfaces.",
+    "source": "Zero Zero Two Pickleball Operation Autopilot Introduction.pdf"
+  },
+  {
+    "category": "quality",
+    "customer_quote": "Not the results we'd like to see.",
+    "context": "Current cleaning results are unsatisfactory with existing equipment.",
+    "source": "Daniel Hardeman Operation Autopilot Meeting Recording.pdf"
+  },
+  {
+    "category": "court_preservation",
+    "customer_quote": "We don't want to over clean, of course, because we don't want to wear off the surface.",
+    "context": "Concern about cleaning frequency affecting court surface longevity.",
+    "source": "Daniel Hardeman Operation Autopilot Meeting Recording.pdf"
+  },
+  {
+    "category": "labor",
+    "customer_quote": "I've got to have a person and I've got to use... a couple of them are 68 year old women. Well, they're not going to operate a manual floor scrubbing piece of equipment.",
+    "context": "Discussing the challenges of using manual floor scrubbers with current staff.",
+    "source": "Gregory Straub Operation Autopilot Meeting.pdf"
+  },
+  {
+    "category": "court_preservation",
+    "customer_quote": "You're going to run it into the post and the fence and the net post.",
+    "context": "Concerns about potential damage from manual scrubbers operated by staff.",
+    "source": "Gregory Straub Operation Autopilot Meeting.pdf"
+  },
+  {
+    "category": "time",
+    "customer_quote": "Right now we are renting about once a month. But I'd like to be doing it more.",
+    "context": "Desire to clean courts more frequently than current rental schedule allows.",
+    "source": "Gregory Straub Operation Autopilot Meeting.pdf"
+  },
+  {
+    "category": "court_preservation",
+    "customer_quote": "we felt like it was too rough and it could damage the surface",
+    "context": "Concern about previous vacuum use being too rough on court surfaces",
+    "source": "Martina Kostalova Operation Autopilot Meeting (2).pdf"
+  },
+  {
+    "category": "labor",
+    "customer_quote": "It's a high school kid that I hired to come twice a week.",
+    "context": "Currently relies on a high school student for cleaning, which is not a professional solution.",
+    "source": "Jewel Basin Center Operation Autopilot Introduction (1).pdf"
+  },
+  {
+    "category": "quality",
+    "customer_quote": "It's not really a problem until the winter comes, when. Then we have to increase the frequency.",
+    "context": "Cleaning becomes more challenging in winter due to increased dirt from members.",
+    "source": "Jewel Basin Center Operation Autopilot Introduction (1).pdf"
+  }
+]

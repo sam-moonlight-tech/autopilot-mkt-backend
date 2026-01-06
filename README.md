@@ -35,6 +35,7 @@ autopilot-mkt-backend/
 │   ├── models/           # Database models
 │   ├── schemas/          # Pydantic request/response schemas
 │   └── services/         # Business logic services
+├── knowledge/            # Extracted sales knowledge (JSON)
 ├── supabase/
 │   └── migrations/       # Database migration scripts
 ├── tests/                # Test suite
@@ -48,6 +49,7 @@ autopilot-mkt-backend/
 
 - **Agent Service**: Orchestrates AI-powered conversations using OpenAI
 - **RAG Service**: Retrieval-Augmented Generation for product recommendations
+- **Sales Knowledge Service**: Phase-specific context injection from real customer conversations
 - **Session Management**: Stateless session handling with cookie-based auth
 - **Discovery Profiles**: Captures facility profiles and procurement priorities
 - **Product Catalog**: Vector search-enabled product discovery
@@ -234,6 +236,74 @@ Migrations are stored in `supabase/migrations/` and should be applied in order:
 7. `007_create_robot_catalog.sql`
 8. `008_create_orders.sql`
 9. `009_update_conversations.sql`
+
+### Sales Knowledge Extraction
+
+The platform uses structured knowledge extracted from real sales call transcripts to enhance agent conversations. This knowledge is injected into the agent's context based on the current conversation phase.
+
+#### Knowledge Structure
+
+Knowledge files are stored in `knowledge/` directory:
+
+| File | Description |
+|------|-------------|
+| `personas.json` | Customer/facility profiles (court counts, surfaces, staff size) |
+| `pain_points.json` | Pain points in customer language |
+| `questions_asked.json` | Common prospect questions by topic |
+| `objections_discovery.json` | Early-stage objections |
+| `buying_signals.json` | Interest indicators and their strength |
+| `objection_responses.json` | Proven objection-response pairs |
+| `roi_examples.json` | Real ROI calculations from customer deals |
+| `closing_triggers.json` | What drives purchase decisions |
+| `pricing_insights.json` | Negotiation patterns and outcomes |
+
+#### Phase-Specific Injection
+
+The `SalesKnowledgeService` provides context based on conversation phase:
+
+- **DISCOVERY**: Pain points to probe, common questions, buying signals, early objections
+- **ROI**: ROI examples, labor cost comparisons, value justification patterns
+- **GREENLIGHT**: Objection-response pairs, closing triggers, pricing insights
+
+#### Running Knowledge Extraction
+
+To extract knowledge from new call transcripts:
+
+1. **Add PDF transcripts** to the appropriate folder:
+   - `Discovery Calls/` - Initial discovery conversations
+   - `Greenlight Call/` - Closing and pricing conversations
+
+2. **Run the extraction script**:
+
+```bash
+# Activate virtual environment
+source venv/bin/activate
+
+# Run extraction (requires OpenAI API key)
+OPENAI_API_KEY="your-api-key" python scripts/extract_call_knowledge.py
+```
+
+3. **Review extracted knowledge** in `knowledge/` directory
+
+The extraction script:
+- Parses PDF transcripts using PyMuPDF
+- Uses GPT-4 to identify and extract structured insights
+- Merges knowledge from all transcripts into consolidated JSON files
+- Preserves source attribution for each insight
+
+#### Adding New Knowledge Manually
+
+You can also manually add entries to the JSON files. Each entry should follow the existing schema:
+
+```json
+// Example pain_points.json entry
+{
+  "category": "time|labor|quality|cost|health|court_preservation",
+  "customer_quote": "exact customer language",
+  "context": "situation context",
+  "source": "source file or manual"
+}
+```
 
 ## API Documentation
 

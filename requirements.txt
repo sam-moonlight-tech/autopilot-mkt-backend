@@ -16,6 +16,7 @@ PyJWT>=2.8.0
 # AI/ML integrations
 openai>=1.12.0
 pinecone>=5.0.0
+PyMuPDF>=1.23.0  # PDF text extraction
 
 # Payment processing
 stripe>=7.0.0

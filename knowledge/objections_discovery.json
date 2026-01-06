@@ -1,0 +1,134 @@
+[
+  {
+    "objection": "Can we like, try before we buy, like test it for a month or two?",
+    "category": "trust",
+    "context": "Nick is hesitant to commit without first testing the product.",
+    "source": "Sara Dawson Autopilot Meeting Recording.pdf"
+  },
+  {
+    "objection": "I personally can't make any decisions right now. I need to take it back to my partner.",
+    "category": "timing",
+    "context": "Needs partner's input before proceeding with any decision",
+    "source": "George Zink Operation Autopilot Meeting Recording.pdf"
+  },
+  {
+    "objection": "It's a math question and it's a finance question of, you know, do you want to save five or seven thousand dollars over three years?",
+    "category": "budget",
+    "context": "Evaluating the financial implications of leasing versus buying.",
+    "source": "Pickleball Club of Georgia Operation Autopilot Introduction.pdf"
+  },
+  {
+    "objection": "We're a startup. I mean, we have a nice facility, but we're definitely like, we're profitable but not highly profitable.",
+    "category": "budget",
+    "context": "The customer is concerned about the affordability of the cleaning robot given their current financial situation.",
+    "source": "Rally House Facility Meeting Recording.pdf"
+  },
+  {
+    "objection": "It's probably outside the amount that we want to spend on a machine.",
+    "category": "budget",
+    "context": "The customer feels the cost of the robot is too high compared to their current spending.",
+    "source": "Pickleville x Operation Autopilot Meeting Recording.pdf"
+  },
+  {
+    "objection": "It's easily double what I spend on labor at the moment.",
+    "category": "price",
+    "context": "The customer is comparing the monthly lease cost to their current labor expenses.",
+    "source": "Pickleville x Operation Autopilot Meeting Recording.pdf"
+  },
+  {
+    "objection": "I see someone's going to have to be involved in that. There's going to have to be manual intervention, I would assume.",
+    "category": "technical",
+    "context": "Concerns about the need for manual intervention in moving the robot.",
+    "source": "Del Norte Athletic Club Operation Autopilot Introduction (1).pdf"
+  },
+  {
+    "objection": "For me it's not a no brainer, but I'd say it's something that is a maybe.",
+    "category": "trust",
+    "context": "Hesitation in seeing the full value and ease of implementation.",
+    "source": "Del Norte Athletic Club Operation Autopilot Introduction (1).pdf"
+  },
+  {
+    "objection": "Cash flow is critical for a club just starting out.",
+    "category": "budget",
+    "context": "Ryan is cautious about the financial commitment given the club's current stage.",
+    "source": "Picklr Tempe Operation Autopilot Introduction.pdf"
+  },
+  {
+    "objection": "The amounts that I'm hearing are high. Make that money back. I don't know if the investment worth it.",
+    "category": "budget",
+    "context": "Concerns about the financial feasibility of the investment",
+    "source": "Mary Jo Greaves Operation Autopilot Meeting Recording.pdf"
+  },
+  {
+    "objection": "I personally feel like it would have to be a third of like a fraction of the cost for it to make sense.",
+    "category": "price",
+    "context": "The current pricing does not align with their budget for a facility with only three courts",
+    "source": "Mary Jo Greaves Operation Autopilot Meeting Recording.pdf"
+  },
+  {
+    "objection": "I just have to wrap my head around, you know, the costs and stuff like that.",
+    "category": "budget",
+    "context": "Kevin is concerned about the overall cost of implementing the cleaning robot solution.",
+    "source": "Kevin OBrien Operation Autopilot Meeting Recording.pdf"
+  },
+  {
+    "objection": "I feel like we're sort of now talking to a third party who sells a lot of different equipment.",
+    "category": "trust",
+    "context": "Confusion about the sales process and the parties involved.",
+    "source": "PickleSpot Indoor Courts Operation Autopilot Introduction.pdf"
+  },
+  {
+    "objection": "Right now. I think a lease is not something we're looking for and we're also not looking to spend, you know, that outlay of $25,000.",
+    "category": "budget",
+    "context": "Concerns about the financial commitment required for leasing or purchasing the equipment.",
+    "source": "PickleSpot Indoor Courts Operation Autopilot Introduction.pdf"
+  },
+  {
+    "objection": "the more you've seen it, the more frequent it doesn't last as long because it breaks down the cord.",
+    "category": "technical",
+    "context": "Concern about frequent cleaning affecting court longevity",
+    "source": "Alex Karsos Operation Autopilot Meeting Recording.pdf"
+  },
+  {
+    "objection": "We also need to make sure that the numbers make sense and that you know, we're not just investing in something for ease of use.",
+    "category": "budget",
+    "context": "Concern about ensuring the investment is financially justified.",
+    "source": "Operation Autopilot Ace Pickleball Club Introduction (2).pdf"
+  },
+  {
+    "objection": "I don't need it autonomous. I mean, I can do it myself.",
+    "category": "technical",
+    "context": "Expressing that current manual cleaning methods are sufficient.",
+    "source": "Zero Zero Two Pickleball Operation Autopilot Introduction.pdf"
+  },
+  {
+    "objection": "Right now, a thousand bucks a month I can't afford.",
+    "category": "budget",
+    "context": "Discussing the financial constraints of the facility.",
+    "source": "Zero Zero Two Pickleball Operation Autopilot Introduction.pdf"
+  },
+  {
+    "objection": "8.99 for a small business, like, we're our own business separate from Will, like, we're a franchisee from them. 8.99 a month is prohibitive.",
+    "category": "price",
+    "context": "The monthly cost of the cleaning robot is considered too high for their budget.",
+    "source": "Daniel Hardeman Operation Autopilot Meeting Recording.pdf"
+  },
+  {
+    "objection": "When do you expect to have a unit available?",
+    "category": "timing",
+    "context": "Concern about the availability and lead time for obtaining the cleaning robot.",
+    "source": "Gregory Straub Operation Autopilot Meeting.pdf"
+  },
+  {
+    "objection": "This looks smaller and lighter weight. It's kind of Roomba. Like it's bigger and heavier than a Roomba. But I'm, I know what Roombas do versus what a commercial Vacuum cleaner does, and it ain't the same.",
+    "category": "technical",
+    "context": "Jim is concerned about the cleaning effectiveness of the robot compared to his current equipment.",
+    "source": "Jewel Basin Center Operation Autopilot Introduction (1).pdf"
+  },
+  {
+    "objection": "Any of these packages are going to be a fair amount more than we spend. So you're not going to save us money.",
+    "category": "price",
+    "context": "Jim is concerned about the cost-effectiveness of the robot compared to his current cleaning solution.",
+    "source": "Jewel Basin Center Operation Autopilot Introduction (1).pdf"
+  }
+]

@@ -1,0 +1,308 @@
+[
+  {
+    "question": "Can we like, try before we buy, like test it for a month or two?",
+    "topic": "operations",
+    "context": "Nick is interested in testing the cleaning robot before committing to a purchase.",
+    "source": "Sara Dawson Autopilot Meeting Recording.pdf"
+  },
+  {
+    "question": "What else do we have to do on a recurring basis?",
+    "topic": "operations",
+    "context": "Nick is inquiring about the maintenance and operational requirements of the cleaning robot.",
+    "source": "Sara Dawson Autopilot Meeting Recording.pdf"
+  },
+  {
+    "question": "So tell me, what does it like, so how does this, how does what you do work? Like is it a, you sell the product? You, is it a lease? Is it a rent to own?",
+    "topic": "pricing",
+    "context": "Understanding the purchasing model for the cleaning robots",
+    "source": "George Zink Operation Autopilot Meeting Recording.pdf"
+  },
+  {
+    "question": "I actually, I haven't seen a video of it. Do you have like a video or something that you could pull up just so I could see it in action?",
+    "topic": "operations",
+    "context": "Wants to see the product in action to better understand its functionality",
+    "source": "George Zink Operation Autopilot Meeting Recording.pdf"
+  },
+  {
+    "question": "Do you guys have like a trial period? You have like, like, do you have one where you could try for a little bit of time or is it like you got to commit before you can see how it works in your facility?",
+    "topic": "trust",
+    "context": "Interested in trying the product before making a full commitment",
+    "source": "George Zink Operation Autopilot Meeting Recording.pdf"
+  },
+  {
+    "question": "How many of these have. Do you have on the market? Like, how many of you sold out? Like, how many are out and about.",
+    "topic": "trust",
+    "context": "Assessing the product's market presence and reliability",
+    "source": "George Zink Operation Autopilot Meeting Recording.pdf"
+  },
+  {
+    "question": "Do you recommend the courts being cleaned twice a day?",
+    "topic": "cleaning",
+    "context": "Inquiring about the recommended cleaning frequency for the courts.",
+    "source": "Pickleball Club of Georgia Operation Autopilot Introduction.pdf"
+  },
+  {
+    "question": "How many robots, how quickly can they do a court? And would we need more than one for our facility or would one do it?",
+    "topic": "operations",
+    "context": "Understanding the number of robots needed and their efficiency.",
+    "source": "Pickleball Club of Georgia Operation Autopilot Introduction.pdf"
+  },
+  {
+    "question": "When the machine starts, can it be programmed to start from its storage place, or does it need to be pulled out and set up at one particular point?",
+    "topic": "operations",
+    "context": "Clarifying the operational setup and starting process for the robots.",
+    "source": "Pickleball Club of Georgia Operation Autopilot Introduction.pdf"
+  },
+  {
+    "question": "Do the lights have to be on?",
+    "topic": "operations",
+    "context": "Understanding if lighting conditions affect robot operation.",
+    "source": "Pickleball Club of Georgia Operation Autopilot Introduction.pdf"
+  },
+  {
+    "question": "Is this something we buy? Is this something we lease? Is this something that is a, you know, robot as a service?",
+    "topic": "pricing",
+    "context": "Clarifying the purchasing and leasing options for the robots.",
+    "source": "Pickleball Club of Georgia Operation Autopilot Introduction.pdf"
+  },
+  {
+    "question": "Is there an actual usage parameter about these robots where you can't use them more than X?",
+    "topic": "pricing",
+    "context": "Inquiring about usage limitations under the lease agreement.",
+    "source": "Pickleball Club of Georgia Operation Autopilot Introduction.pdf"
+  },
+  {
+    "question": "At the end of the three-year lease period, what does the end of the lease period look like here?",
+    "topic": "pricing",
+    "context": "Understanding options at the end of the lease period.",
+    "source": "Pickleball Club of Georgia Operation Autopilot Introduction.pdf"
+  },
+  {
+    "question": "Does it recognize spills and change its mode?",
+    "topic": "operations",
+    "context": "Inquiring about the robot's ability to detect and respond to spills.",
+    "source": "Pickleball Club of Georgia Operation Autopilot Introduction.pdf"
+  },
+  {
+    "question": "Does CC go back to the home like a Roomba or not really?",
+    "topic": "operations",
+    "context": "The customer is inquiring about the robot's operational capabilities and how it functions autonomously.",
+    "source": "Rally House Facility Meeting Recording.pdf"
+  },
+  {
+    "question": "What all is involved with the paperwork?",
+    "topic": "operations",
+    "context": "The customer is asking about the leasing process and requirements for acquiring the cleaning robot.",
+    "source": "Rally House Facility Meeting Recording.pdf"
+  },
+  {
+    "question": "What is the run time of the machine? How many square feet can it clean per charge?",
+    "topic": "operations",
+    "context": "The customer is trying to understand the efficiency and coverage of the cleaning robot.",
+    "source": "Pickleville x Operation Autopilot Meeting Recording.pdf"
+  },
+  {
+    "question": "Do you have an idea on what that fee is?",
+    "topic": "pricing",
+    "context": "The customer is inquiring about the setup fee for the cleaning robot.",
+    "source": "Pickleville x Operation Autopilot Meeting Recording.pdf"
+  },
+  {
+    "question": "How does that work? Does that. Yes. You suggest we need to pick those up every time we turn it on or. What's the thought there?",
+    "topic": "compatibility",
+    "context": "The customer is concerned about how the robot navigates around obstacles like chairs and tables.",
+    "source": "Pickleville x Operation Autopilot Meeting Recording.pdf"
+  },
+  {
+    "question": "Is there any difference? I know it's a much larger area.",
+    "topic": "compatibility",
+    "context": "Inquiring about the robot's ability to clean both pickleball and tennis courts.",
+    "source": "Del Norte Athletic Club Operation Autopilot Introduction (1).pdf"
+  },
+  {
+    "question": "How it gets from these courts and gets up the step over there, how it even gets to the courts and gets set up?",
+    "topic": "operations",
+    "context": "Concerns about the robot's mobility and setup across different areas.",
+    "source": "Del Norte Athletic Club Operation Autopilot Introduction (1).pdf"
+  },
+  {
+    "question": "So the million dollar question, how, what's the process? How much, how the work?",
+    "topic": "pricing",
+    "context": "Inquiring about the cost and process of acquiring the cleaning robot.",
+    "source": "Mike Turpin Abhinav Anand Meeting Recording.pdf"
+  },
+  {
+    "question": "Now, is there anyone that you have that's even locally that has these or you actually see one?",
+    "topic": "compatibility",
+    "context": "Interested in local references or existing users of the product.",
+    "source": "Mike Turpin Abhinav Anand Meeting Recording.pdf"
+  },
+  {
+    "question": "What's the charge time? Like how long you gotta charge. How long does it last?",
+    "topic": "operations",
+    "context": "Ryan is interested in the operational details of the cleaning robot.",
+    "source": "Picklr Tempe Operation Autopilot Introduction.pdf"
+  },
+  {
+    "question": "Where are these manufactured currently? Do you guys do them in house?",
+    "topic": "technical",
+    "context": "Ryan is inquiring about the origin and manufacturing of the cleaning robots.",
+    "source": "Picklr Tempe Operation Autopilot Introduction.pdf"
+  },
+  {
+    "question": "Was there a price point on the machine?",
+    "topic": "pricing",
+    "context": "Inquiring about the cost of the cleaning robot",
+    "source": "Mary Jo Greaves Operation Autopilot Meeting Recording.pdf"
+  },
+  {
+    "question": "What are the guarantees that we get if you try it and you're not happy with it?",
+    "topic": "trust",
+    "context": "Concerns about satisfaction and return policy",
+    "source": "Mary Jo Greaves Operation Autopilot Meeting Recording.pdf"
+  },
+  {
+    "question": "Is this the only model available?",
+    "topic": "compatibility",
+    "context": "Interested in different models that might suit their needs better",
+    "source": "Mary Jo Greaves Operation Autopilot Meeting Recording.pdf"
+  },
+  {
+    "question": "What are the dimensions of the machine?",
+    "topic": "technical",
+    "context": "Understanding the size for transportation purposes",
+    "source": "Mary Jo Greaves Operation Autopilot Meeting Recording.pdf"
+  },
+  {
+    "question": "How many clubs are you in right now?",
+    "topic": "operations",
+    "context": "Kevin is interested in understanding the market presence and reliability of the product.",
+    "source": "Kevin OBrien Operation Autopilot Meeting Recording.pdf"
+  },
+  {
+    "question": "How do you get service though, like in Connecticut when you're in Chicago?",
+    "topic": "operations",
+    "context": "Inquiring about the logistics of servicing the equipment from a different location.",
+    "source": "PickleSpot Indoor Courts Operation Autopilot Introduction.pdf"
+  },
+  {
+    "question": "What's the cost of that unit right there that you're showing us?",
+    "topic": "pricing",
+    "context": "Asking about the pricing of the cleaning robot being demonstrated.",
+    "source": "PickleSpot Indoor Courts Operation Autopilot Introduction.pdf"
+  },
+  {
+    "question": "What do people generally have like it dedicated in an open space that it can come back to and go out without? Or do they have it in a closet and have to let it out?",
+    "topic": "operations",
+    "context": "Asked about the placement and operation of the cleaning robot",
+    "source": "Alex Karsos Operation Autopilot Meeting Recording.pdf"
+  },
+  {
+    "question": "I'm assuming people use it on your other flooring in the facility as well too, to clean, essentially flooring like. Like lvt. Like that we have throughout. In between Quartz.",
+    "topic": "compatibility",
+    "context": "Inquiring about the robot's use on different flooring types",
+    "source": "Alex Karsos Operation Autopilot Meeting Recording.pdf"
+  },
+  {
+    "question": "What is usually like the schedule that most clubs run, Is it daily for courts?",
+    "topic": "operations",
+    "context": "Asked about the typical cleaning schedule for the robot",
+    "source": "Alex Karsos Operation Autopilot Meeting Recording.pdf"
+  },
+  {
+    "question": "How long does it usually take to get up and running?",
+    "topic": "operations",
+    "context": "Inquiring about the timeline for installation and operation",
+    "source": "Alex Karsos Operation Autopilot Meeting Recording.pdf"
+  },
+  {
+    "question": "So I mean, if I understand correctly, so it's like a rental of the machine.",
+    "topic": "pricing",
+    "context": "Clarification on the financial model for acquiring the cleaning robot.",
+    "source": "Operation Autopilot Ace Pickleball Club Introduction (2).pdf"
+  },
+  {
+    "question": "Does it have a water or like how big is the water reservoir?",
+    "topic": "technical",
+    "context": "Understanding the technical specifications of the cleaning robot.",
+    "source": "Operation Autopilot Ace Pickleball Club Introduction (2).pdf"
+  },
+  {
+    "question": "What is the charge time on that? Like how long does it take to get like eight hours out of it?",
+    "topic": "technical",
+    "context": "Inquiring about the battery life and charging time of the cleaning robot.",
+    "source": "Operation Autopilot Ace Pickleball Club Introduction (2).pdf"
+  },
+  {
+    "question": "What is a price range that you would feel more comfortable with?",
+    "topic": "pricing",
+    "context": "Discussing the affordability of the cleaning robot.",
+    "source": "Zero Zero Two Pickleball Operation Autopilot Introduction.pdf"
+  },
+  {
+    "question": "How does it actually clean the courts? Does it actually do any... Is it a significant improvement from what we already have?",
+    "topic": "cleaning",
+    "context": "Interest in understanding the effectiveness of the cleaning robot compared to current equipment.",
+    "source": "Daniel Hardeman Operation Autopilot Meeting Recording.pdf"
+  },
+  {
+    "question": "Do you all offer like a trial so you could show us how it works on the court?",
+    "topic": "operations",
+    "context": "Interest in seeing the product in action before committing.",
+    "source": "Daniel Hardeman Operation Autopilot Meeting Recording.pdf"
+  },
+  {
+    "question": "What is the lease structure?",
+    "topic": "pricing",
+    "context": "Clarification on the financial commitment required for the product.",
+    "source": "Daniel Hardeman Operation Autopilot Meeting Recording.pdf"
+  },
+  {
+    "question": "What's the size of it and how broad is the, you know, is each pass?",
+    "topic": "operations",
+    "context": "Inquiring about the physical dimensions and cleaning path of the robot.",
+    "source": "Gregory Straub Operation Autopilot Meeting.pdf"
+  },
+  {
+    "question": "How battery life, how long does the battery run typically?",
+    "topic": "operations",
+    "context": "Understanding the operational duration of the cleaning robot.",
+    "source": "Gregory Straub Operation Autopilot Meeting.pdf"
+  },
+  {
+    "question": "it seems like you can customize what the robot does?",
+    "topic": "compatibility",
+    "context": "Concern about the robot's impact on court surfaces with layers of paint",
+    "source": "Martina Kostalova Operation Autopilot Meeting (2).pdf"
+  },
+  {
+    "question": "What about like, I'm assuming you have to charge. Charge cc.",
+    "topic": "operations",
+    "context": "Inquiring about the charging process for the cleaning robot",
+    "source": "Martina Kostalova Operation Autopilot Meeting (2).pdf"
+  },
+  {
+    "question": "How do you recall, like approximately what's the installation fee?",
+    "topic": "pricing",
+    "context": "Clarifying the cost details related to installation",
+    "source": "Martina Kostalova Operation Autopilot Meeting (2).pdf"
+  },
+  {
+    "question": "What does it take to prep it, to clean it, you know, to kind of turn it around, make it available for the next cycle?",
+    "topic": "operations",
+    "context": "Jim is trying to understand the operational requirements of the cleaning robot.",
+    "source": "Jewel Basin Center Operation Autopilot Introduction (1).pdf"
+  },
+  {
+    "question": "Do you recommend priming it first? Priming the court surface first with some sort of sprayed water or emulsifier?",
+    "topic": "compatibility",
+    "context": "Jim is inquiring about the preparation process for using the cleaning robot on their specific court surface.",
+    "source": "Jewel Basin Center Operation Autopilot Introduction (1).pdf"
+  },
+  {
+    "question": "How long does it take to drain and wipe out? Clean.",
+    "topic": "operations",
+    "context": "Jim is interested in understanding the maintenance and cleaning cycle of the robot.",
+    "source": "Jewel Basin Center Operation Autopilot Introduction (1).pdf"
+  }
+]

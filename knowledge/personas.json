@@ -1,0 +1,253 @@
+[
+  {
+    "name": "Rally House",
+    "type": "indoor pickleball",
+    "court_count": 11,
+    "court_surface": "outdoor pickleball court surface with sand texture",
+    "square_footage": 32000,
+    "staff_size": null,
+    "notable_details": [
+      "Premium upscale facility",
+      "Recently repainted with dark chocolate color",
+      "Hosted a grand opening with 750 people and the mayor"
+    ],
+    "source": "Sara Dawson Autopilot Meeting Recording.pdf"
+  },
+  {
+    "name": null,
+    "type": "indoor multi-sport",
+    "court_count": 6,
+    "court_surface": null,
+    "square_footage": null,
+    "staff_size": null,
+    "notable_details": [
+      "90% capacity tennis wise",
+      "Courts shared with pickleball",
+      "Split scenario with two courts on one side and four on the other"
+    ],
+    "source": "George Zink Operation Autopilot Meeting Recording.pdf"
+  },
+  {
+    "name": "Pickleball Club of Georgia",
+    "type": "indoor pickleball",
+    "court_count": 33,
+    "court_surface": "Cushion X",
+    "square_footage": 110000,
+    "staff_size": null,
+    "notable_details": [
+      "largest indoor pickleball facility in the country",
+      "includes a cafe with a full bar, four trackman golf simulators, a Pilates studio, a pro shop, and event rooms",
+      "each court is individually fenced"
+    ],
+    "source": "Pickleball Club of Georgia Operation Autopilot Introduction.pdf"
+  },
+  {
+    "name": "Rally House",
+    "type": "multi-location pickleball facility",
+    "court_count": null,
+    "court_surface": "tan",
+    "square_footage": null,
+    "staff_size": null,
+    "notable_details": [
+      "Facility has a janitor closet with power, hot and cold water.",
+      "Facility is considering expanding to multiple locations.",
+      "Facility hosts large events, such as a grand opening with 600 attendees."
+    ],
+    "source": "Rally House Facility Meeting Recording.pdf"
+  },
+  {
+    "name": "Pickleville",
+    "type": "indoor and outdoor pickleball",
+    "court_count": 15,
+    "court_surface": null,
+    "square_footage": null,
+    "staff_size": null,
+    "notable_details": [
+      "Nine indoor courts and six outdoor courts",
+      "Nets divide courts and hang on the ground an inch or two"
+    ],
+    "source": "Pickleville x Operation Autopilot Meeting Recording.pdf"
+  },
+  {
+    "name": "Del Norte Athletic Club",
+    "type": "multi-sport (pickleball and tennis)",
+    "court_count": 11,
+    "court_surface": null,
+    "square_footage": null,
+    "staff_size": null,
+    "notable_details": [
+      "Owned by a church and operates as a nonprofit",
+      "Built in 1957 with thin margins",
+      "Has two large pools that are leaking",
+      "Facility includes a gym with rubberized mats"
+    ],
+    "source": "Del Norte Athletic Club Operation Autopilot Introduction (1).pdf"
+  },
+  {
+    "name": null,
+    "type": "sports complex",
+    "court_count": 9,
+    "court_surface": null,
+    "square_footage": null,
+    "staff_size": null,
+    "notable_details": [
+      "existing sports complex",
+      "professional installer from Chicago coming to do courts"
+    ],
+    "source": "Mike Turpin Abhinav Anand Meeting Recording.pdf"
+  },
+  {
+    "name": "The Picklr Tempe",
+    "type": "outdoor pickleball",
+    "court_count": 8,
+    "court_surface": "acrylic",
+    "square_footage": null,
+    "staff_size": null,
+    "notable_details": [
+      "Facility has been open for 10 months",
+      "Around 600 to 650 members",
+      "Two other locations being built in the East Valley",
+      "Possible takeover of two other facilities in Mesa and Peoria"
+    ],
+    "source": "Picklr Tempe Operation Autopilot Introduction.pdf"
+  },
+  {
+    "name": null,
+    "type": "multi-sport",
+    "court_count": 15,
+    "court_surface": null,
+    "square_footage": null,
+    "staff_size": null,
+    "notable_details": [
+      "Family-owned business",
+      "Five indoor locations",
+      "Includes pickleball, basketball, and gymnastics facilities"
+    ],
+    "source": "Mary Jo Greaves Operation Autopilot Meeting Recording.pdf"
+  },
+  {
+    "name": null,
+    "type": "pickleball",
+    "court_count": null,
+    "court_surface": null,
+    "square_footage": null,
+    "staff_size": null,
+    "notable_details": [
+      "Located in Rhode Island"
+    ],
+    "source": "Kevin OBrien Operation Autopilot Meeting Recording.pdf"
+  },
+  {
+    "name": "PickleSpot",
+    "type": "indoor pickleball",
+    "court_count": null,
+    "court_surface": "cushion surface",
+    "square_footage": null,
+    "staff_size": null,
+    "notable_details": [
+      "Located in Orange, Connecticut",
+      "New facility with a soup to nuts build out"
+    ],
+    "source": "PickleSpot Indoor Courts Operation Autopilot Introduction.pdf"
+  },
+  {
+    "name": null,
+    "type": "multi-sport",
+    "court_count": 11,
+    "court_surface": "acrotech Cushion X",
+    "square_footage": null,
+    "staff_size": 2,
+    "notable_details": [
+      "Opening in the next two weeks",
+      "Another 10 court facility opening in February or March",
+      "Located in South Boston and Charlestown"
+    ],
+    "source": "Alex Karsos Operation Autopilot Meeting Recording.pdf"
+  },
+  {
+    "name": "Ace Pickleball Club",
+    "type": "indoor pickleball",
+    "court_count": 13,
+    "court_surface": "half inch thick cushioned surface, exterior outdoor court indoors",
+    "square_footage": null,
+    "staff_size": null,
+    "notable_details": [
+      "Part of a franchise",
+      "First club on the west coast",
+      "Opened for almost a year",
+      "Plans to open another location in Phoenix"
+    ],
+    "source": "Operation Autopilot Ace Pickleball Club Introduction (2).pdf"
+  },
+  {
+    "name": null,
+    "type": "indoor pickleball",
+    "court_count": 2,
+    "court_surface": null,
+    "square_footage": null,
+    "staff_size": null,
+    "notable_details": [
+      "facility opened a year ago",
+      "manual cleaning process using hose, squeegee, and leaf blower"
+    ],
+    "source": "Zero Zero Two Pickleball Operation Autopilot Introduction.pdf"
+  },
+  {
+    "name": null,
+    "type": "indoor pickleball",
+    "court_count": 11,
+    "court_surface": "pro cushion style courts",
+    "square_footage": null,
+    "staff_size": null,
+    "notable_details": [
+      "Regional developers expanding throughout Atlanta",
+      "Located on the west end of the Atlanta Beltline",
+      "Using a tenant S7 machine for cleaning"
+    ],
+    "source": "Daniel Hardeman Operation Autopilot Meeting Recording.pdf"
+  },
+  {
+    "name": null,
+    "type": "indoor pickleball",
+    "court_count": 17,
+    "court_surface": "Sportmaster U.S. open court surfaces",
+    "square_footage": 60000,
+    "staff_size": null,
+    "notable_details": [
+      "Facility is located just outside of Milwaukee",
+      "Second location being built in Green Bay",
+      "Plans for expansion to Minneapolis",
+      "Facility includes a championship court",
+      "Frequent visits from sports celebrities"
+    ],
+    "source": "Gregory Straub Operation Autopilot Meeting.pdf"
+  },
+  {
+    "name": null,
+    "type": "multi-sport",
+    "court_count": 14,
+    "court_surface": "pickle roll with high quality paint and Lay Cult paint",
+    "square_footage": null,
+    "staff_size": null,
+    "notable_details": [
+      "Facility has a turf area for events",
+      "Uses pickle roll which is glued to the ground"
+    ],
+    "source": "Martina Kostalova Operation Autopilot Meeting (2).pdf"
+  },
+  {
+    "name": "Jewel Basin Center",
+    "type": "multi-sport with a focus on pickleball",
+    "court_count": 10,
+    "court_surface": "acrylic, concrete silica embedded acrylic sanctioned surface multilayer on asphalt",
+    "square_footage": 8000,
+    "staff_size": null,
+    "notable_details": [
+      "Located in northwest Montana near Glacier National Park",
+      "Four indoor courts",
+      "High traffic and busy facility",
+      "Facility is well-known and has been featured in magazines"
+    ],
+    "source": "Jewel Basin Center Operation Autopilot Introduction (1).pdf"
+  }
+]

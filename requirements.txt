@@ -21,6 +21,9 @@ PyMuPDF>=1.23.0  # PDF text extraction
 # Payment processing
 stripe>=7.0.0
 
+# Email
+resend>=2.0.0
+
 # Development dependencies
 pytest>=7.4.0
 pytest-asyncio>=0.23.0

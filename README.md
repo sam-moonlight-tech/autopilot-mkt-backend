@@ -116,6 +116,9 @@ PORT=8080
 # CORS
 CORS_ORIGINS=http://localhost:3000,http://localhost:5173
 
+# Auth
+AUTH_REDIRECT_URL=https://autopilot-marketplace-discovery-to.vercel.app
+
 # Supabase
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SECRET_KEY=your-service-role-key
@@ -243,7 +246,16 @@ Migrations are stored in `supabase/migrations/` and should be applied in order:
 
 #### Authentication
 
-- `POST /api/v1/auth/login` - User login (Supabase JWT)
+- `POST /api/v1/auth/signup` - Sign up new user with email and password
+- `POST /api/v1/auth/login` - User login with email and password
+- `POST /api/v1/auth/verify-email` - Verify email address with token
+- `GET /api/v1/auth/verify-email` - Verify email via GET (for email link redirects)
+- `POST /api/v1/auth/resend-verification` - Resend verification email
+- `POST /api/v1/auth/forgot-password` - Request password reset email
+- `POST /api/v1/auth/reset-password` - Reset password with token from email
+- `GET /api/v1/auth/reset-password` - Reset password via GET (for email link redirects)
+- `POST /api/v1/auth/change-password` - Change password for authenticated user
+- `POST /api/v1/auth/refresh` - Refresh access token using refresh token
 - `POST /api/v1/auth/logout` - User logout
 - `GET /api/v1/auth/me` - Get current user context
 

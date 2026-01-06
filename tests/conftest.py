@@ -23,6 +23,7 @@ os.environ.setdefault("PINECONE_ENVIRONMENT", "test-environment")
 os.environ.setdefault("STRIPE_SECRET_KEY", "sk_test_stripe_secret_key")
 os.environ.setdefault("STRIPE_WEBHOOK_SECRET", "whsec_test_webhook_secret")
 os.environ.setdefault("STRIPE_PUBLISHABLE_KEY", "pk_test_stripe_publishable_key")
+os.environ.setdefault("AUTH_REDIRECT_URL", "https://test.example.com")
 
 
 @pytest.fixture(scope="session")

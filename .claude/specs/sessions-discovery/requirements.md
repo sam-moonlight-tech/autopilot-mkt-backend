@@ -103,6 +103,33 @@ Session and discovery management enables the Autopilot platform by providing:
 4. WHEN neither auth method is present THEN the system SHALL create a new session (for session-supporting endpoints)
 5. WHEN implementing dual auth THEN the system SHALL provide a reusable dependency
 
+### Requirement 8: AI-Powered Profile Extraction
+
+**User Story:** As a user chatting with the agent, I want my discovery profile to be automatically populated from my conversation, so that I don't have to manually fill out forms.
+
+#### Acceptance Criteria
+
+1. WHEN a message is sent to a conversation THEN the system SHALL extract discovery data from recent messages
+2. WHEN extracting data THEN the system SHALL use OpenAI structured output with gpt-4o-mini
+3. WHEN extracting data THEN the system SHALL only extract EXPLICITLY stated information
+4. WHEN extracting data THEN the system SHALL validate against the 25 known question keys
+5. WHEN extracting data THEN the system SHALL merge new extractions with existing answers
+6. WHEN extracting data THEN the system SHALL update sessions (anonymous) or discovery_profiles (authenticated)
+7. WHEN ROI inputs are mentioned THEN the system SHALL extract laborRate, manualMonthlySpend, manualMonthlyHours
+8. IF extraction fails THEN the system SHALL NOT fail the message response
+9. IF conversation has fewer than 2 messages THEN the system SHALL skip extraction
+10. WHEN extraction succeeds THEN the system SHALL log the extracted keys
+
+#### Extraction Questions (25 total)
+
+| Group | Keys |
+|-------|------|
+| Company | company_name, priorities, stakeholders |
+| Facility | background, fnb, courts_count, surfaces, sqft, lifecycle |
+| Operations | method, responsibility, frequency, timing, duration, challenges, failure_impact |
+| Economics | budget_exists, monthly_spend, opportunity_cost |
+| Context | feedback, confidence, past_attempts, ideal_timeline, upcoming_events, business_challenges |
+
 ## Non-Functional Requirements
 
 ### Performance

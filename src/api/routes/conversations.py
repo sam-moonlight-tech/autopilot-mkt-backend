@@ -1,5 +1,6 @@
 """Conversation API routes."""
 
+import logging
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, status
@@ -17,8 +18,11 @@ from src.schemas.message import (
 )
 from src.services.agent_service import AgentService
 from src.services.conversation_service import ConversationService
+from src.services.profile_extraction_service import ProfileExtractionService
 from src.services.profile_service import ProfileService
 from src.services.session_service import SessionService
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/conversations", tags=["conversations"])
 
@@ -297,6 +301,30 @@ async def send_message(
         user_message=data.content,
         metadata=data.metadata,
     )
+
+    # Trigger profile extraction after agent response (non-blocking on failure)
+    try:
+        extraction_service = ProfileExtractionService()
+        session_id = auth.session.session_id if auth.session else None
+        profile_id = None
+        if auth.is_authenticated and auth.user:
+            profile_id = await _get_user_profile_id(auth.user)
+
+        extraction_result = await extraction_service.extract_and_update(
+            conversation_id=conversation_id,
+            session_id=session_id,
+            profile_id=profile_id,
+        )
+        if extraction_result.get("extracted_count", 0) > 0:
+            logger.info(
+                "Extracted %d fields from conversation %s: %s",
+                extraction_result["extracted_count"],
+                conversation_id,
+                extraction_result.get("keys_extracted", []),
+            )
+    except Exception as e:
+        # Log but don't fail the response - extraction is enhancement, not critical
+        logger.warning("Profile extraction failed for conversation %s: %s", conversation_id, e)
 
     return MessageWithAgentResponse(
         user_message=user_message,

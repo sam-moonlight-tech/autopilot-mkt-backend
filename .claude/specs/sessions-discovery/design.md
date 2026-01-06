@@ -190,7 +190,74 @@ graph TD
 - **Dependencies:** src/core/supabase.py
 - **Reuses:** Supabase client
 
-### Component 5: Dual Auth Dependency (`src/api/deps.py`)
+### Component 5: Profile Extraction Service (`src/services/profile_extraction_service.py`)
+
+- **Purpose:** AI-powered extraction of discovery data from conversations
+- **Interfaces:**
+  ```python
+  class ProfileExtractionService:
+      EXTRACTION_MODEL = "gpt-4o-mini"
+      MAX_MESSAGES_FOR_EXTRACTION = 10
+
+      async def extract_and_update(
+          self,
+          conversation_id: UUID,
+          session_id: UUID | None = None,
+          profile_id: UUID | None = None,
+      ) -> dict[str, Any]:
+          """Extract discovery data and update session/profile.
+
+          Returns:
+              {
+                  "extracted_count": int,
+                  "confidence": "high" | "medium" | "low",
+                  "keys_extracted": ["sqft", "courts_count", ...]
+              }
+          """
+
+      def _validate_and_enrich_answers(
+          self,
+          answers: dict[str, Any],
+      ) -> dict[str, Any]:
+          """Validate keys against QUESTION_BY_KEY and enrich with metadata."""
+
+      async def _update_target(
+          self,
+          session_id: UUID | None,
+          profile_id: UUID | None,
+          answers: dict[str, Any],
+          roi_inputs: dict[str, Any] | None,
+      ) -> None:
+          """Update session or discovery profile with extracted data."""
+  ```
+- **Dependencies:** openai, src/services/conversation_service.py, src/services/session_service.py, src/services/discovery_profile_service.py
+- **Reuses:** SessionService, DiscoveryProfileService, ConversationService
+
+### Component 6: Extraction Constants (`src/services/extraction_constants.py`)
+
+- **Purpose:** Define discovery questions and extraction prompts aligned with frontend
+- **Interfaces:**
+  ```python
+  # 25 discovery questions with id, key, label, group
+  DISCOVERY_QUESTIONS: list[dict]
+
+  # Lookup by key for validation
+  QUESTION_BY_KEY: dict[str, dict]
+
+  # Valid question keys set
+  VALID_QUESTION_KEYS: set[str]
+
+  # OpenAI prompts for extraction
+  EXTRACTION_SYSTEM_PROMPT: str
+  EXTRACTION_USER_PROMPT: str
+
+  # JSON Schema for structured output
+  EXTRACTION_SCHEMA: dict
+  ```
+- **Dependencies:** None
+- **Reuses:** N/A
+
+### Component 7: Dual Auth Dependency (`src/api/deps.py`)
 
 - **Purpose:** Provide reusable dependency for dual authentication
 - **Interfaces:**
@@ -446,8 +513,12 @@ sequenceDiagram
 | `src/schemas/discovery.py` | Discovery Pydantic schemas |
 | `src/services/session_service.py` | Session business logic |
 | `src/services/discovery_profile_service.py` | Discovery profile business logic |
+| `src/services/profile_extraction_service.py` | AI-powered profile extraction from conversations |
+| `src/services/extraction_constants.py` | Discovery questions and extraction prompts |
 | `src/api/routes/sessions.py` | Session endpoints |
 | `src/api/routes/discovery.py` | Discovery endpoints |
 | `src/api/deps.py` | Add dual auth dependency (modify) |
 | `src/services/conversation_service.py` | Add session support (modify) |
+| `src/api/routes/conversations.py` | Add extraction trigger after messages (modify) |
 | `src/main.py` | Register new routers (modify) |
+| `tests/unit/test_profile_extraction_service.py` | Unit tests for extraction service |

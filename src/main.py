@@ -10,6 +10,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from src.api.middleware.error_handler import error_handler_middleware
 from src.api.routes import (
+    auth,
     companies,
     conversations,
     discovery,
@@ -93,6 +94,8 @@ def create_app() -> FastAPI:
     # Create API v1 router for versioned endpoints
     api_v1_router = APIRouter(prefix="/api/v1")
 
+    # Authentication routes
+    api_v1_router.include_router(auth.router)
 
     # Profile and company routes
     api_v1_router.include_router(profiles.router)

@@ -31,8 +31,14 @@ class Settings(BaseSettings):
 
     # CORS
     cors_origins: str = Field(
-        default="http://localhost:3000,http://localhost:5173",
+        default="http://localhost:3000,http://localhost:5173,https://autopilot-marketplace-discovery-to.vercel.app",
         description="Comma-separated list of allowed CORS origins",
+    )
+
+    # Auth redirects
+    auth_redirect_url: str = Field(
+        ...,
+        description="Redirect URL after email verification (set via AUTH_REDIRECT_URL env var)",
     )
 
     # Supabase
@@ -61,6 +67,19 @@ class Settings(BaseSettings):
     stripe_secret_key: str = Field(default="", description="Stripe secret API key")
     stripe_webhook_secret: str = Field(default="", description="Stripe webhook signing secret")
     stripe_publishable_key: str = Field(default="", description="Stripe publishable key (for frontend)")
+
+    # Email (Resend)
+    resend_api_key: str = Field(default="", description="Resend API key for sending emails")
+    email_from_address: str = Field(
+        default="Autopilot <noreply@operationautopilot.com>",
+        description="From address for transactional emails",
+    )
+
+    # Frontend
+    frontend_url: str = Field(
+        default="http://localhost:3000",
+        description="Frontend application URL for email links",
+    )
 
     @property
     def cors_origins_list(self) -> list[str]:

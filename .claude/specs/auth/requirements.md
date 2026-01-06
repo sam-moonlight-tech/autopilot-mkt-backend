@@ -2,13 +2,15 @@
 
 ## Introduction
 
-This specification defines the authentication layer for the Autopilot backend API. It establishes JWT token verification middleware that validates Supabase-issued tokens, extracts user context for protected routes, and provides dependency injection for accessing the authenticated user throughout the application.
+This specification defines the authentication layer for the Autopilot backend API. It establishes a complete authentication system including user signup, email verification, login, and JWT token verification. The system uses Supabase Auth as the identity provider, with the backend handling signup flows, email verification, and token validation.
 
 ## Alignment with Product Vision
 
 Authentication enables the Autopilot platform by providing:
+- **User Registration**: Email/password signup with verification
 - **Secure Access**: Only authenticated users can access conversations and profile data
 - **User Context**: All operations are tied to a specific user identity
+- **Email Verification**: Ensures valid email addresses before account activation
 - **Sales Demo Ready**: Supports the sales-led flow where reps sign in to demonstrate the platform
 
 ## Requirements
@@ -56,6 +58,121 @@ Authentication enables the Autopilot platform by providing:
 1. WHEN a token is expired THEN the system SHALL return a specific error code "TOKEN_EXPIRED" distinct from other auth errors
 2. WHEN a token is expired THEN the system SHALL include a message indicating the client should refresh their token
 3. WHEN returning auth errors THEN the system SHALL use consistent ErrorResponse schema format
+
+### Requirement 5: User Signup with Email Verification
+
+**User Story:** As a new user, I want to sign up with my email and password, so that I can create an account and start using the platform.
+
+#### Acceptance Criteria
+
+1. WHEN a user submits signup with email and password THEN the system SHALL create a user account in Supabase Auth
+2. WHEN a user signs up THEN the system SHALL send a verification email to the provided email address
+3. WHEN a user signs up THEN the system SHALL return user_id, email, and email_sent status
+4. IF the email already exists THEN the system SHALL return HTTP 400 with appropriate error message
+5. IF the password is too weak THEN the system SHALL return HTTP 400 with validation error
+6. WHEN a user signs up with display_name THEN the system SHALL store it in user metadata
+
+### Requirement 6: Email Verification
+
+**User Story:** As a new user, I want to verify my email address, so that I can activate my account and log in.
+
+#### Acceptance Criteria
+
+1. WHEN a user clicks the verification link in their email THEN the system SHALL verify the email address
+2. WHEN email verification succeeds THEN the system SHALL return a redirect URL to the frontend
+3. WHEN email verification succeeds THEN the system SHALL mark the user's email as verified in Supabase
+4. IF the verification token is invalid or expired THEN the system SHALL return HTTP 400 with error message
+5. WHEN verification completes THEN the system SHALL redirect to the configured AUTH_REDIRECT_URL
+6. WHEN a user requests email verification via POST THEN the system SHALL accept token in request body
+7. WHEN a user requests email verification via GET THEN the system SHALL accept token as query parameter (for email link redirects)
+
+### Requirement 7: Resend Verification Email
+
+**User Story:** As a user, I want to resend my verification email, so that I can verify my account if I lost the original email.
+
+#### Acceptance Criteria
+
+1. WHEN a user requests to resend verification email THEN the system SHALL send a new verification email
+2. IF the email is not found THEN the system SHALL return HTTP 400 with error message
+3. IF the email is already verified THEN the system SHALL return HTTP 400 indicating verification not needed
+4. WHEN resend succeeds THEN the system SHALL return confirmation that email was sent
+
+### Requirement 8: User Login
+
+**User Story:** As a user, I want to log in with my email and password, so that I can access my account.
+
+#### Acceptance Criteria
+
+1. WHEN a user submits valid email and password THEN the system SHALL authenticate the user
+2. WHEN login succeeds THEN the system SHALL return JWT access token and refresh token
+3. WHEN login succeeds THEN the system SHALL return user_id, email, and token expiration time
+4. IF credentials are invalid THEN the system SHALL return HTTP 401 with error message
+5. IF email is not verified THEN the system SHALL return HTTP 401 indicating verification required
+6. WHEN login succeeds THEN the system SHALL create a session in Supabase
+
+### Requirement 9: User Logout
+
+**User Story:** As a user, I want to log out, so that I can securely end my session.
+
+#### Acceptance Criteria
+
+1. WHEN an authenticated user requests logout THEN the system SHALL invalidate their session
+2. WHEN logout succeeds THEN the system SHALL return confirmation message
+3. WHEN logout is called THEN the system SHALL clear the user's session in Supabase
+
+### Requirement 10: Redirect URL Configuration
+
+**User Story:** As a developer, I want to configure redirect URLs per environment, so that email verification links work correctly in development, staging, and production.
+
+#### Acceptance Criteria
+
+1. WHEN the system sends verification emails THEN it SHALL use the AUTH_REDIRECT_URL environment variable
+2. WHEN AUTH_REDIRECT_URL is not set THEN the system SHALL raise a configuration error
+3. WHEN verification completes THEN the system SHALL redirect to AUTH_REDIRECT_URL with success status
+4. WHEN redirect URL is configured THEN it SHALL be included in all verification email links
+
+### Requirement 11: Password Reset (Forgot Password)
+
+**User Story:** As a user, I forgot my password and need to reset it via email, so that I can regain access to my account.
+
+#### Acceptance Criteria
+
+1. WHEN a user requests password reset with their email THEN the system SHALL send a password reset email
+2. WHEN password reset email is sent THEN the system SHALL return confirmation that email was sent
+3. WHEN a user clicks the password reset link in their email THEN the system SHALL allow them to set a new password
+4. WHEN a user submits a new password with valid reset token THEN the system SHALL update their password
+5. IF the reset token is invalid or expired THEN the system SHALL return HTTP 400 with error message
+6. IF the email is not found THEN the system SHALL return HTTP 400 with error message (for security, don't reveal if email exists)
+7. WHEN password reset succeeds THEN the system SHALL return a redirect URL to the frontend
+8. WHEN a user requests password reset via POST THEN the system SHALL accept email in request body
+9. WHEN a user requests password reset via GET THEN the system SHALL accept token as query parameter (for email link redirects)
+
+### Requirement 12: Change Password (Authenticated)
+
+**User Story:** As a logged-in user, I want to change my password, so that I can update it for security reasons.
+
+#### Acceptance Criteria
+
+1. WHEN an authenticated user requests to change password THEN the system SHALL require current password verification
+2. WHEN current password is verified THEN the system SHALL update to new password
+3. IF current password is incorrect THEN the system SHALL return HTTP 401 with error message
+4. IF new password is too weak THEN the system SHALL return HTTP 400 with validation error
+5. IF new password is same as current password THEN the system SHALL return HTTP 400 with error message
+6. WHEN password change succeeds THEN the system SHALL return confirmation message
+7. WHEN password is changed THEN the system SHALL invalidate all other sessions (optional, security best practice)
+
+### Requirement 13: Refresh Access Token
+
+**User Story:** As a user, I want my session to stay active without re-logging in, so that I have a seamless experience.
+
+#### Acceptance Criteria
+
+1. WHEN a user provides a valid refresh token THEN the system SHALL issue a new access token
+2. WHEN refresh succeeds THEN the system SHALL return new access token and optionally new refresh token
+3. WHEN refresh succeeds THEN the system SHALL return token expiration time
+4. IF refresh token is invalid or expired THEN the system SHALL return HTTP 401 with error message
+5. WHEN refresh token is used THEN the system SHALL optionally rotate to a new refresh token (security best practice)
+6. WHEN refresh succeeds THEN the system SHALL maintain the same user session
 
 ## Non-Functional Requirements
 

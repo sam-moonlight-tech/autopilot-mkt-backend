@@ -279,3 +279,68 @@ This implementation plan establishes session management for anonymous users and 
   - Test conversation transfers on session claim
   - Purpose: Verify session conversation flow
   - _Requirements: 3, 7_
+
+### Profile Extraction Layer (AI-Powered Auto-Population)
+
+- [x] 6.28. Create extraction constants
+  - File: `src/services/extraction_constants.py` (create)
+  - Define DISCOVERY_QUESTIONS list with 25 questions (id, key, label, group)
+  - Define QUESTION_BY_KEY lookup dict
+  - Define VALID_QUESTION_KEYS set
+  - Define EXTRACTION_SYSTEM_PROMPT for extraction instructions
+  - Define EXTRACTION_USER_PROMPT template for context
+  - Define EXTRACTION_SCHEMA for OpenAI structured JSON output
+  - Purpose: Centralize extraction configuration aligned with frontend
+  - _Requirements: 8_
+
+- [x] 6.29. Implement ProfileExtractionService core methods
+  - File: `src/services/profile_extraction_service.py` (create)
+  - Implement extract_and_update() that:
+    - Gets recent messages from conversation (last 10)
+    - Gets current answers from session or discovery_profile
+    - Calls OpenAI gpt-4o-mini with structured output schema
+    - Validates extracted keys against QUESTION_BY_KEY
+    - Merges new extractions with existing answers
+    - Updates session or discovery_profile
+  - Use low temperature (0.1) for consistent extraction
+  - Return extracted_count, confidence, keys_extracted
+  - Purpose: AI-powered profile data extraction
+  - _Leverage: src/core/openai.py, src/services/session_service.py, src/services/discovery_profile_service.py_
+  - _Requirements: 8_
+
+- [x] 6.30. Add extraction validation and enrichment
+  - File: `src/services/profile_extraction_service.py` (modify)
+  - Implement _validate_and_enrich_answers() that:
+    - Filters out unknown question keys
+    - Skips answers without a value
+    - Enriches with questionId, label, group from QUESTION_BY_KEY
+  - Implement _update_target() that:
+    - Updates session if session_id provided
+    - Updates discovery_profile if profile_id provided
+    - Handles ROI inputs (laborRate, manualMonthlySpend, manualMonthlyHours)
+  - Purpose: Ensure data quality and proper targeting
+  - _Requirements: 8_
+
+- [x] 6.31. Integrate extraction in conversation message endpoint
+  - File: `src/api/routes/conversations.py` (modify)
+  - After generate_response(), call ProfileExtractionService.extract_and_update()
+  - Pass conversation_id, session_id (from auth.session), profile_id (from auth.user)
+  - Wrap in try/except - extraction failures should NOT fail message response
+  - Log extracted fields on success, warn on failure
+  - Purpose: Trigger extraction on every message
+  - _Leverage: src/services/profile_extraction_service.py_
+  - _Requirements: 8_
+
+- [x] 6.32. Write unit tests for ProfileExtractionService
+  - File: `tests/unit/test_profile_extraction_service.py` (create)
+  - Test extract_and_update extracts facility size from conversation
+  - Test returns zero when not enough messages
+  - Test returns zero when no target provided
+  - Test merges with existing answers
+  - Test handles extraction failure gracefully
+  - Test _validate_and_enrich_answers validates known keys
+  - Test _validate_and_enrich_answers enriches with metadata
+  - Test _validate_and_enrich_answers skips empty values
+  - Test extracts ROI inputs when mentioned
+  - Purpose: Verify extraction business logic
+  - _Requirements: 8_

@@ -1,5 +1,6 @@
 """Invitation business logic service."""
 
+import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import UUID
@@ -8,6 +9,9 @@ from src.api.middleware.error_handler import NotFoundError, ValidationError
 from src.core.supabase import get_supabase_client
 from src.models.company import InvitationStatus
 from src.schemas.company import InvitationCreate
+from src.services.email_service import EmailService
+
+logger = logging.getLogger(__name__)
 
 
 class InvitationService:
@@ -15,9 +19,10 @@ class InvitationService:
 
     DEFAULT_EXPIRATION_DAYS = 7
 
-    def __init__(self) -> None:
+    def __init__(self, email_service: EmailService | None = None) -> None:
         """Initialize invitation service with Supabase client."""
         self.client = get_supabase_client()
+        self.email_service = email_service or EmailService()
 
     async def create_invitation(
         self,
@@ -52,7 +57,47 @@ class InvitationService:
             .execute()
         )
 
-        return response.data[0]
+        invitation = response.data[0]
+
+        # Get company and inviter details for the email
+        company = (
+            self.client.table("companies")
+            .select("name")
+            .eq("id", str(company_id))
+            .single()
+            .execute()
+        )
+        company_name = company.data.get("name", "a company") if company.data else "a company"
+
+        inviter = (
+            self.client.table("profiles")
+            .select("display_name, email")
+            .eq("id", str(invited_by))
+            .single()
+            .execute()
+        )
+        inviter_name = "A team member"
+        if inviter.data:
+            inviter_name = inviter.data.get("display_name") or inviter.data.get("email", "A team member")
+
+        # Send invitation email
+        email_result = await self.email_service.send_invitation_email(
+            to_email=data.email,
+            inviter_name=inviter_name,
+            company_name=company_name,
+            invitation_id=invitation["id"],
+        )
+
+        if email_result.get("success"):
+            logger.info("Invitation email sent to %s for company %s", data.email, company_name)
+        else:
+            logger.warning(
+                "Failed to send invitation email to %s: %s",
+                data.email,
+                email_result.get("error"),
+            )
+
+        return invitation
 
     async def get_invitation(self, invitation_id: UUID) -> dict[str, Any] | None:
         """Get an invitation by ID.

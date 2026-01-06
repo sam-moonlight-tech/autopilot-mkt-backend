@@ -347,6 +347,109 @@ async def transfer_to_profile(
     }).eq('id', str(conversation_id)).execute()
 ```
 
+## AI-Powered Profile Extraction
+
+After each agent response, the system automatically extracts discovery profile data from the conversation using OpenAI structured output.
+
+### Architecture
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant API as conversations.py
+    participant AS as AgentService
+    participant PES as ProfileExtractionService
+    participant OAI as OpenAI
+    participant SS as SessionService
+    participant DPS as DiscoveryProfileService
+
+    U->>API: POST /conversations/{id}/messages
+    API->>AS: generate_response()
+    AS-->>API: user_message, agent_message
+
+    API->>PES: extract_and_update(conversation_id, session_id?, profile_id?)
+    PES->>PES: Get recent messages (last 10)
+    PES->>SS: Get current answers
+    PES->>OAI: Extract via structured JSON output
+    OAI-->>PES: Extracted answers + ROI inputs
+    PES->>PES: Validate and enrich answers
+    PES->>SS: Update session (anonymous) or
+    PES->>DPS: Update discovery_profile (authenticated)
+    PES-->>API: extraction_result
+
+    API-->>U: MessageWithAgentResponse
+```
+
+### ProfileExtractionService
+
+```python
+class ProfileExtractionService:
+    EXTRACTION_MODEL = "gpt-4o-mini"  # Fast, cost-effective
+    MAX_MESSAGES_FOR_EXTRACTION = 10
+
+    async def extract_and_update(
+        self,
+        conversation_id: UUID,
+        session_id: UUID | None = None,
+        profile_id: UUID | None = None,
+    ) -> dict[str, Any]:
+        """Extract discovery data from conversation and update session/profile.
+
+        Returns:
+            {
+                "extracted_count": int,
+                "confidence": "high" | "medium" | "low",
+                "keys_extracted": ["sqft", "courts_count", ...]
+            }
+        """
+```
+
+### Extraction Constants
+
+The service uses a schema of 25 discovery questions aligned with the frontend:
+
+```python
+DISCOVERY_QUESTIONS = [
+    {"id": 1, "key": "company_name", "label": "Company Name", "group": "Company"},
+    {"id": 5, "key": "courts_count", "label": "Indoor Courts", "group": "Facility"},
+    {"id": 7, "key": "sqft", "label": "Total Sq Ft", "group": "Facility"},
+    {"id": 11, "key": "monthly_spend", "label": "Monthly Spend", "group": "Economics"},
+    # ... 25 total questions
+]
+```
+
+### Extraction Behavior
+
+1. **Minimum Message Threshold**: Extraction only runs if conversation has 2+ messages
+2. **Incremental Merge**: New extractions merge with existing answers (new values override)
+3. **Validation**: Only known question keys are accepted; enriched with metadata
+4. **ROI Inputs**: Extracts `laborRate`, `manualMonthlySpend`, `manualMonthlyHours` when mentioned
+5. **Non-Blocking**: Extraction failures are logged but don't fail the message response
+
+### Integration in Route Handler
+
+```python
+@router.post("/{conversation_id}/messages")
+async def send_message(...):
+    # 1. Generate agent response
+    user_message, agent_message = await agent_service.generate_response(...)
+
+    # 2. Trigger profile extraction (non-blocking on failure)
+    try:
+        extraction_service = ProfileExtractionService()
+        extraction_result = await extraction_service.extract_and_update(
+            conversation_id=conversation_id,
+            session_id=auth.session.session_id if auth.session else None,
+            profile_id=profile_id if auth.is_authenticated else None,
+        )
+        if extraction_result.get("extracted_count", 0) > 0:
+            logger.info("Extracted %d fields", extraction_result["extracted_count"])
+    except Exception as e:
+        logger.warning("Profile extraction failed: %s", e)
+
+    return MessageWithAgentResponse(...)
+```
+
 ## Error Handling
 
 ### Error Scenarios

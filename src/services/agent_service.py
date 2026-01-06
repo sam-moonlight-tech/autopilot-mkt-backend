@@ -193,7 +193,7 @@ class AgentService:
             response = self.client.chat.completions.create(
                 model=self.settings.openai_model,
                 messages=context,  # type: ignore[arg-type]
-                max_tokens=1000,
+                max_completion_tokens=1000,
                 temperature=0.7,
             )
 

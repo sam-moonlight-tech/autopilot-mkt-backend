@@ -40,11 +40,27 @@ cd "${PROJECT_ROOT}"
 echo "📦 Checking Artifact Registry repository..."
 if ! gcloud artifacts repositories describe "${REPOSITORY}" --location="${REGION}" --project="${PROJECT_ID}" &>/dev/null; then
   echo "   Creating Artifact Registry repository: ${REPOSITORY}"
-  gcloud artifacts repositories create "${REPOSITORY}" \
+  # Create repository, but don't fail if it already exists (race condition or concurrent runs)
+  set +e  # Temporarily disable exit on error
+  CREATE_OUTPUT=$(gcloud artifacts repositories create "${REPOSITORY}" \
     --repository-format=docker \
     --location="${REGION}" \
     --project="${PROJECT_ID}" \
-    --description="Docker repository for ${SERVICE_NAME}"
+    --description="Docker repository for ${SERVICE_NAME}" 2>&1)
+  CREATE_EXIT_CODE=$?
+  set -e  # Re-enable exit on error
+  
+  if [ ${CREATE_EXIT_CODE} -eq 0 ]; then
+    echo "   ✓ Repository created successfully"
+  elif echo "${CREATE_OUTPUT}" | grep -q "ALREADY_EXISTS"; then
+    echo "   ✓ Repository already exists (skipping creation)"
+  else
+    echo "   ✗ Failed to create repository:"
+    echo "${CREATE_OUTPUT}"
+    exit 1
+  fi
+else
+  echo "   ✓ Repository already exists"
 fi
 
 # Build and push the container image using Cloud Build

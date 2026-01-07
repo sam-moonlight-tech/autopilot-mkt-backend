@@ -9,6 +9,7 @@ from src.core.pinecone import check_pinecone_connection
 from src.core.supabase import check_database_connection
 from src.schemas.auth import AuthenticatedResponse
 from src.schemas.common import CheckResult, HealthResponse, HealthStatus, ReadinessResponse
+from src.services.sales_knowledge_service import get_sales_knowledge_service, KNOWLEDGE_DIR
 
 router = APIRouter(tags=["health"])
 
@@ -125,3 +126,72 @@ async def authenticated_check(user: CurrentUser) -> AuthenticatedResponse:
         email=user.email,
         role=user.role,
     )
+
+
+@router.get(
+    "/health/knowledge",
+    summary="Knowledge files check",
+    description="Check if sales knowledge files are loaded correctly.",
+)
+async def knowledge_check() -> dict:
+    """Check knowledge files status.
+
+    Returns information about the knowledge directory and loaded files.
+    Useful for debugging deployment issues.
+
+    Returns:
+        dict: Knowledge loading status and file information.
+    """
+    knowledge_files = [
+        "personas.json",
+        "pain_points.json",
+        "questions_asked.json",
+        "objections_discovery.json",
+        "objection_responses.json",
+        "roi_examples.json",
+        "closing_triggers.json",
+        "pricing_insights.json",
+        "buying_signals.json",
+    ]
+
+    # Check directory
+    dir_exists = KNOWLEDGE_DIR.exists()
+    dir_path = str(KNOWLEDGE_DIR)
+
+    # Check each file
+    files_status = {}
+    for filename in knowledge_files:
+        filepath = KNOWLEDGE_DIR / filename
+        if filepath.exists():
+            try:
+                import json
+                with open(filepath) as f:
+                    data = json.load(f)
+                files_status[filename] = {
+                    "exists": True,
+                    "item_count": len(data) if isinstance(data, list) else 1,
+                }
+            except Exception as e:
+                files_status[filename] = {"exists": True, "error": str(e)}
+        else:
+            files_status[filename] = {"exists": False}
+
+    # Try loading via service
+    service_status = {}
+    try:
+        service = get_sales_knowledge_service()
+        discovery_ctx = service.get_discovery_context()
+        service_status = {
+            "loaded": True,
+            "discovery_context_length": len(discovery_ctx),
+            "discovery_context_preview": discovery_ctx[:500] if discovery_ctx else None,
+        }
+    except Exception as e:
+        service_status = {"loaded": False, "error": str(e)}
+
+    return {
+        "knowledge_dir": dir_path,
+        "dir_exists": dir_exists,
+        "files": files_status,
+        "service": service_status,
+    }

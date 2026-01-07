@@ -33,6 +33,7 @@ RUN pip install --no-cache --find-links /wheels --no-index -r requirements.txt
 
 # Copy application code
 COPY src/ ./src/
+COPY knowledge/ ./knowledge/
 COPY pyproject.toml .
 
 # Set ownership

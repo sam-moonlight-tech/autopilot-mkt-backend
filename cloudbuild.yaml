@@ -52,6 +52,11 @@ steps:
       - "8080"
       - "--set-env-vars"
       - "APP_ENV=production,DEBUG=false,HOST=0.0.0.0"
+      # Note: Additional required environment variables and secrets must be configured:
+      # - AUTH_REDIRECT_URL (required, set via --update-env-vars or substitution)
+      # - SUPABASE_URL, SUPABASE_SECRET_KEY, SUPABASE_SIGNING_KEY_JWK (secrets)
+      # - OPENAI_API_KEY, PINECONE_API_KEY, PINECONE_ENVIRONMENT (secrets)
+      # These should be set via Cloud Run service configuration or via --update-secrets/--update-env-vars flags
     id: "deploy-cloud-run"
 
 # Substitution variables (can be overridden via gcloud builds submit)

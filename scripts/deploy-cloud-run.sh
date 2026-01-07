@@ -67,6 +67,50 @@ fi
 echo "📦 Building container image..."
 gcloud builds submit --tag "${IMAGE_NAME}" --project "${PROJECT_ID}" --region="${REGION}"
 
+# Build base environment variables list
+BASE_ENV_VARS="APP_ENV=production,DEBUG=false,HOST=0.0.0.0"
+
+# Add secrets or environment variables
+if [ "${USE_SECRETS}" = "true" ]; then
+  echo "🔐 Using Secret Manager for sensitive values..."
+  # AUTH_REDIRECT_URL is typically not a secret, add it as env var if present in .env
+  if [ -f .env ] && grep -q "^AUTH_REDIRECT_URL=" .env; then
+    AUTH_REDIRECT_VALUE=$(grep "^AUTH_REDIRECT_URL=" .env | cut -d '=' -f2- | sed -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//")
+    BASE_ENV_VARS="${BASE_ENV_VARS},AUTH_REDIRECT_URL=${AUTH_REDIRECT_VALUE}"
+  else
+    echo "⚠️  Warning: AUTH_REDIRECT_URL not found in .env. This is a required field!"
+    echo "   You must set it manually or add it to your .env file."
+  fi
+else
+  echo "📝 Using environment variables from .env file..."
+  if [ -f .env ]; then
+    # Read values from .env and add to deployment
+    ENV_VARS="${BASE_ENV_VARS}"
+    
+    while IFS='=' read -r key value; do
+      # Skip comments and empty lines
+      [[ "$key" =~ ^#.*$ ]] && continue
+      [[ -z "$key" ]] && continue
+      
+      # Remove quotes from value
+      value=$(echo "$value" | sed -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//")
+      
+      # Add to env vars if it's one of our required variables
+      case "$key" in
+        SUPABASE_URL|SUPABASE_SECRET_KEY|SUPABASE_SIGNING_KEY_JWK|OPENAI_API_KEY|PINECONE_API_KEY|PINECONE_ENVIRONMENT|OPENAI_MODEL|PINECONE_INDEX_NAME|EMBEDDING_MODEL|MAX_CONTEXT_MESSAGES|CORS_ORIGINS|AUTH_REDIRECT_URL)
+          ENV_VARS="${ENV_VARS},${key}=${value}"
+          ;;
+      esac
+    done < .env
+    
+    BASE_ENV_VARS="${ENV_VARS}"
+  else
+    echo "⚠️  Warning: .env file not found. You'll need to set environment variables manually."
+    echo "   Required variables: SUPABASE_URL, SUPABASE_SECRET_KEY, SUPABASE_SIGNING_KEY_JWK,"
+    echo "   OPENAI_API_KEY, PINECONE_API_KEY, PINECONE_ENVIRONMENT, AUTH_REDIRECT_URL"
+  fi
+fi
+
 # Prepare deployment command
 DEPLOY_CMD="gcloud run deploy ${SERVICE_NAME} \
   --image ${IMAGE_NAME} \
@@ -81,40 +125,11 @@ DEPLOY_CMD="gcloud run deploy ${SERVICE_NAME} \
   --timeout ${TIMEOUT} \
   --concurrency ${CONCURRENCY} \
   --port 8080 \
-  --set-env-vars APP_ENV=production,DEBUG=false,HOST=0.0.0.0"
+  --set-env-vars ${BASE_ENV_VARS}"
 
-# Add secrets or environment variables
+# Add secrets if using Secret Manager
 if [ "${USE_SECRETS}" = "true" ]; then
-  echo "🔐 Using Secret Manager for sensitive values..."
   DEPLOY_CMD="${DEPLOY_CMD} --update-secrets=SUPABASE_URL=supabase-url:latest,SUPABASE_SECRET_KEY=supabase-secret-key:latest,SUPABASE_SIGNING_KEY_JWK=supabase-signing-key-jwk:latest,OPENAI_API_KEY=openai-api-key:latest,PINECONE_API_KEY=pinecone-api-key:latest,PINECONE_ENVIRONMENT=pinecone-environment:latest"
-else
-  echo "📝 Using environment variables from .env file..."
-  if [ -f .env ]; then
-    # Read values from .env and add to deployment
-    ENV_VARS="APP_ENV=production,DEBUG=false,HOST=0.0.0.0"
-    
-    while IFS='=' read -r key value; do
-      # Skip comments and empty lines
-      [[ "$key" =~ ^#.*$ ]] && continue
-      [[ -z "$key" ]] && continue
-      
-      # Remove quotes from value
-      value=$(echo "$value" | sed -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//")
-      
-      # Add to env vars if it's one of our required variables
-      case "$key" in
-        SUPABASE_URL|SUPABASE_SECRET_KEY|SUPABASE_SIGNING_KEY_JWK|OPENAI_API_KEY|PINECONE_API_KEY|PINECONE_ENVIRONMENT|OPENAI_MODEL|PINECONE_INDEX_NAME|EMBEDDING_MODEL|MAX_CONTEXT_MESSAGES|CORS_ORIGINS)
-          ENV_VARS="${ENV_VARS},${key}=${value}"
-          ;;
-      esac
-    done < .env
-    
-    DEPLOY_CMD="${DEPLOY_CMD} --set-env-vars ${ENV_VARS}"
-  else
-    echo "⚠️  Warning: .env file not found. You'll need to set environment variables manually."
-    echo "   Required variables: SUPABASE_URL, SUPABASE_SECRET_KEY, SUPABASE_SIGNING_KEY_JWK,"
-    echo "   OPENAI_API_KEY, PINECONE_API_KEY, PINECONE_ENVIRONMENT"
-  fi
 fi
 
 # Deploy to Cloud Run

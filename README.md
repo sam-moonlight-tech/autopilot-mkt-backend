@@ -245,17 +245,17 @@ The platform uses structured knowledge extracted from real sales call transcript
 
 Knowledge files are stored in `knowledge/` directory:
 
-| File | Description |
-|------|-------------|
-| `personas.json` | Customer/facility profiles (court counts, surfaces, staff size) |
-| `pain_points.json` | Pain points in customer language |
-| `questions_asked.json` | Common prospect questions by topic |
-| `objections_discovery.json` | Early-stage objections |
-| `buying_signals.json` | Interest indicators and their strength |
-| `objection_responses.json` | Proven objection-response pairs |
-| `roi_examples.json` | Real ROI calculations from customer deals |
-| `closing_triggers.json` | What drives purchase decisions |
-| `pricing_insights.json` | Negotiation patterns and outcomes |
+| File                        | Description                                                     |
+| --------------------------- | --------------------------------------------------------------- |
+| `personas.json`             | Customer/facility profiles (court counts, surfaces, staff size) |
+| `pain_points.json`          | Pain points in customer language                                |
+| `questions_asked.json`      | Common prospect questions by topic                              |
+| `objections_discovery.json` | Early-stage objections                                          |
+| `buying_signals.json`       | Interest indicators and their strength                          |
+| `objection_responses.json`  | Proven objection-response pairs                                 |
+| `roi_examples.json`         | Real ROI calculations from customer deals                       |
+| `closing_triggers.json`     | What drives purchase decisions                                  |
+| `pricing_insights.json`     | Negotiation patterns and outcomes                               |
 
 #### Phase-Specific Injection
 
@@ -270,6 +270,7 @@ The `SalesKnowledgeService` provides context based on conversation phase:
 To extract knowledge from new call transcripts:
 
 1. **Add PDF transcripts** to the appropriate folder:
+
    - `Discovery Calls/` - Initial discovery conversations
    - `Greenlight Call/` - Closing and pricing conversations
 
@@ -283,9 +284,10 @@ source venv/bin/activate
 OPENAI_API_KEY="your-api-key" python scripts/extract_call_knowledge.py
 ```
 
-3. **Review extracted knowledge** in `knowledge/` directory
+1. **Review extracted knowledge** in `knowledge/` directory
 
 The extraction script:
+
 - Parses PDF transcripts using PyMuPDF
 - Uses GPT-4 to identify and extract structured insights
 - Merges knowledge from all transcripts into consolidated JSON files

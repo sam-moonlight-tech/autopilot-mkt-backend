@@ -50,6 +50,7 @@ class Settings(BaseSettings):
     openai_api_key: str = Field(..., description="OpenAI API key")
     openai_model: str = Field(default="gpt-4o", description="OpenAI model to use")
     max_context_messages: int = Field(default=20, description="Max messages to include in context")
+    mock_openai: bool = Field(default=False, description="Mock OpenAI responses for local testing (saves tokens)")
 
     # Pinecone
     pinecone_api_key: str = Field(..., description="Pinecone API key")

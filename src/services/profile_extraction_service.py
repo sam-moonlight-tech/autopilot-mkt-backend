@@ -7,6 +7,7 @@ from uuid import UUID
 
 from openai import OpenAIError
 
+from src.core.config import get_settings
 from src.core.openai import get_openai_client
 from src.services.conversation_service import ConversationService
 from src.services.discovery_profile_service import DiscoveryProfileService
@@ -24,7 +25,9 @@ logger = logging.getLogger(__name__)
 class ProfileExtractionService:
     """Service for extracting discovery data from conversation content."""
 
-    EXTRACTION_MODEL = "gpt-4o"  # Best structured output support with strict mode
+    # Using gpt-4o-mini for extraction to reduce costs (~90% savings vs gpt-4o)
+    # Mini model handles structured JSON extraction well with strict mode
+    EXTRACTION_MODEL = "gpt-4o-mini"
     MAX_MESSAGES_FOR_EXTRACTION = 10  # Last N messages to analyze
 
     def __init__(
@@ -40,6 +43,7 @@ class ProfileExtractionService:
             session_service: Optional session service for testing.
             discovery_profile_service: Optional discovery profile service for testing.
         """
+        self.settings = get_settings()
         self.client = get_openai_client()
         self.conversation_service = conversation_service or ConversationService()
         self.session_service = session_service or SessionService()
@@ -63,6 +67,11 @@ class ProfileExtractionService:
         Returns:
             dict: Extraction results with extracted_count, confidence, and keys.
         """
+        # Skip extraction in mock mode to save tokens
+        if self.settings.mock_openai:
+            logger.info("Mock mode enabled - skipping profile extraction")
+            return {"extracted_count": 0, "reason": "Mock mode enabled"}
+
         if not session_id and not profile_id:
             logger.warning("No session_id or profile_id provided for extraction")
             return {"extracted_count": 0, "reason": "No target provided"}

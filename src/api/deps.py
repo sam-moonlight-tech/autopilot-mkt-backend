@@ -7,6 +7,8 @@ from uuid import UUID
 from fastapi import Cookie, Depends, Header, HTTPException, Request, Response, status
 
 from src.api.middleware.auth import AuthError, AuthErrorCode, decode_jwt
+from src.api.middleware.error_handler import RateLimitError
+from src.core.rate_limiter import get_rate_limiter
 from src.schemas.auth import UserContext
 from src.services.session_service import SessionService
 
@@ -303,3 +305,40 @@ async def get_required_user_or_session(
 # Type aliases for dual auth
 DualAuth = Annotated[AuthContext, Depends(get_current_user_or_session)]
 RequiredDualAuth = Annotated[AuthContext, Depends(get_required_user_or_session)]
+
+
+# Rate limiting dependency
+
+
+async def check_session_rate_limit(auth: DualAuth) -> None:
+    """Check rate limit for anonymous session users.
+
+    This dependency should be used on endpoints that need rate limiting
+    for anonymous users. Authenticated users bypass rate limiting.
+
+    Args:
+        auth: The auth context from DualAuth.
+
+    Raises:
+        RateLimitError: If the session has exceeded the rate limit.
+    """
+    # Skip rate limiting for authenticated users
+    if auth.is_authenticated:
+        return
+
+    # Rate limit anonymous sessions
+    if auth.session and auth.session.session_id:
+        limiter = get_rate_limiter()
+        key = f"session:{auth.session.session_id}"
+
+        allowed, remaining, retry_after = await limiter.check_and_increment(key)
+
+        if not allowed:
+            raise RateLimitError(
+                message="Rate limit exceeded. Please wait before sending more messages.",
+                retry_after=retry_after,
+            )
+
+
+# Type alias for rate limit dependency
+SessionRateLimit = Annotated[None, Depends(check_session_rate_limit)]

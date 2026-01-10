@@ -1,6 +1,7 @@
 """Global error handling middleware for consistent error responses."""
 
 import logging
+import time
 import traceback
 from typing import Any, Callable
 
@@ -89,6 +90,24 @@ class AuthorizationError(APIError):
         )
 
 
+class RateLimitError(APIError):
+    """Rate limit exceeded error."""
+
+    def __init__(
+        self,
+        message: str = "Rate limit exceeded",
+        retry_after: int = 60,
+        details: list[dict[str, Any]] | None = None,
+    ) -> None:
+        super().__init__(
+            message=message,
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            error_type="rate_limit_exceeded",
+            details=details,
+        )
+        self.retry_after = retry_after
+
+
 def create_error_response(
     error_type: str,
     message: str,
@@ -138,6 +157,26 @@ async def error_handler_middleware(request: Request, call_next: Callable[[Reques
 
     try:
         response = await call_next(request)
+        return response
+
+    except RateLimitError as e:
+        # Rate limit errors - add Retry-After header
+        logger.warning(
+            "Rate limit exceeded: %s",
+            e.message,
+            extra={"request_id": request_id, "retry_after": e.retry_after},
+        )
+        response = create_error_response(
+            error_type=e.error_type,
+            message=e.message,
+            status_code=e.status_code,
+            details=e.details,
+            request_id=request_id,
+        )
+        response.headers["Retry-After"] = str(e.retry_after)
+        response.headers["X-RateLimit-Limit"] = "15"
+        response.headers["X-RateLimit-Remaining"] = "0"
+        response.headers["X-RateLimit-Reset"] = str(int(time.time()) + e.retry_after)
         return response
 
     except APIError as e:

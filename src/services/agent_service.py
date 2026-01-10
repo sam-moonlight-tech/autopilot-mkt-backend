@@ -17,6 +17,35 @@ from src.services.sales_knowledge_service import SalesKnowledgeService, get_sale
 
 logger = logging.getLogger(__name__)
 
+# Cache for sales knowledge per conversation+phase (maxsize limits memory usage)
+# Key: (conversation_id, phase) -> sales_knowledge_text
+_sales_knowledge_cache: dict[tuple[str, str], str] = {}
+_SALES_KNOWLEDGE_CACHE_MAX_SIZE = 1000  # Limit cache to prevent memory bloat
+
+
+def clear_sales_knowledge_cache(conversation_id: UUID | None = None) -> int:
+    """Clear sales knowledge cache entries.
+
+    Args:
+        conversation_id: If provided, only clear entries for this conversation.
+                        If None, clear all entries.
+
+    Returns:
+        int: Number of entries cleared.
+    """
+    global _sales_knowledge_cache
+
+    if conversation_id is None:
+        count = len(_sales_knowledge_cache)
+        _sales_knowledge_cache.clear()
+        return count
+
+    conv_str = str(conversation_id)
+    keys_to_remove = [k for k in _sales_knowledge_cache if k[0] == conv_str]
+    for key in keys_to_remove:
+        del _sales_knowledge_cache[key]
+    return len(keys_to_remove)
+
 # System prompts for each conversation phase
 SYSTEM_PROMPTS: dict[ConversationPhase, str] = {
     ConversationPhase.DISCOVERY: """You are Autopilot, an expert robotics procurement consultant helping companies discover their automation needs.
@@ -97,6 +126,59 @@ class AgentService:
             self._sales_knowledge_service = get_sales_knowledge_service()
         return self._sales_knowledge_service
 
+    def _get_cached_sales_knowledge(
+        self, conversation_id: UUID, phase: ConversationPhase
+    ) -> str:
+        """Get sales knowledge for a conversation, caching per conversation+phase.
+
+        This optimization reduces token usage by ~400-600 tokens per message
+        by reusing the same sales knowledge throughout a conversation phase
+        instead of randomly selecting new snippets each time.
+
+        Args:
+            conversation_id: The conversation's UUID.
+            phase: Current conversation phase.
+
+        Returns:
+            str: Cached sales knowledge context.
+        """
+        global _sales_knowledge_cache
+
+        cache_key = (str(conversation_id), phase.value)
+
+        # Return cached value if available
+        if cache_key in _sales_knowledge_cache:
+            logger.debug("Using cached sales knowledge for %s/%s", conversation_id, phase.value)
+            return _sales_knowledge_cache[cache_key]
+
+        # Generate new sales knowledge
+        try:
+            if phase == ConversationPhase.DISCOVERY:
+                sales_knowledge = self.sales_knowledge_service.get_discovery_context()
+            elif phase == ConversationPhase.ROI:
+                sales_knowledge = self.sales_knowledge_service.get_roi_context()
+            elif phase == ConversationPhase.GREENLIGHT:
+                sales_knowledge = self.sales_knowledge_service.get_greenlight_context()
+            else:
+                sales_knowledge = ""
+        except Exception as e:
+            logger.warning("Failed to load sales knowledge: %s", e)
+            sales_knowledge = ""
+
+        # Evict oldest entries if cache is full (simple FIFO eviction)
+        if len(_sales_knowledge_cache) >= _SALES_KNOWLEDGE_CACHE_MAX_SIZE:
+            # Remove first 100 entries to make room
+            keys_to_remove = list(_sales_knowledge_cache.keys())[:100]
+            for key in keys_to_remove:
+                del _sales_knowledge_cache[key]
+            logger.debug("Evicted %d entries from sales knowledge cache", len(keys_to_remove))
+
+        # Cache the result
+        _sales_knowledge_cache[cache_key] = sales_knowledge
+        logger.debug("Cached sales knowledge for %s/%s", conversation_id, phase.value)
+
+        return sales_knowledge
+
     def get_system_prompt(self, phase: ConversationPhase) -> str:
         """Get the system prompt for a conversation phase.
 
@@ -107,6 +189,37 @@ class AgentService:
             str: The system prompt for the phase.
         """
         return SYSTEM_PROMPTS.get(phase, SYSTEM_PROMPTS[ConversationPhase.DISCOVERY])
+
+    def _get_mock_response(self, phase: ConversationPhase, user_message: str) -> str:
+        """Generate a mock response for testing without consuming API tokens.
+
+        Args:
+            phase: The current conversation phase.
+            user_message: The user's message.
+
+        Returns:
+            str: A mock response appropriate for the phase.
+        """
+        mock_responses = {
+            ConversationPhase.DISCOVERY: (
+                "[MOCK] Thanks for sharing that! I'd love to learn more about your operations. "
+                "What types of tasks are currently taking up most of your team's time? "
+                "And roughly how many employees are involved in these processes?"
+            ),
+            ConversationPhase.ROI: (
+                "[MOCK] Based on what you've shared, let me help quantify the potential ROI. "
+                "If you're spending around $50/hour on labor for these tasks, and automation "
+                "could reduce that by 60%, you'd be looking at significant monthly savings. "
+                "What's your current monthly spend on these manual processes?"
+            ),
+            ConversationPhase.GREENLIGHT: (
+                "[MOCK] Great choice! Based on your requirements, I'd recommend looking at "
+                "our collaborative robot solutions. They start at around $2,500/month on a "
+                "lease basis. Would you like me to add this to your cart so you can review "
+                "the full details?"
+            ),
+        }
+        return mock_responses.get(phase, mock_responses[ConversationPhase.DISCOVERY])
 
     async def build_context(
         self,
@@ -140,21 +253,10 @@ class AgentService:
                 system_prompt += f"\n\n{product_context}"
 
         # Add phase-specific sales knowledge from real customer conversations
-        try:
-            if phase == ConversationPhase.DISCOVERY:
-                sales_knowledge = self.sales_knowledge_service.get_discovery_context()
-                if sales_knowledge:
-                    system_prompt += f"\n\n{sales_knowledge}"
-            elif phase == ConversationPhase.ROI:
-                sales_knowledge = self.sales_knowledge_service.get_roi_context()
-                if sales_knowledge:
-                    system_prompt += f"\n\n{sales_knowledge}"
-            elif phase == ConversationPhase.GREENLIGHT:
-                sales_knowledge = self.sales_knowledge_service.get_greenlight_context()
-                if sales_knowledge:
-                    system_prompt += f"\n\n{sales_knowledge}"
-        except Exception as e:
-            logger.warning(f"Failed to load sales knowledge: {e}")
+        # Uses caching to reduce token usage (~400-600 tokens saved per message)
+        sales_knowledge = self._get_cached_sales_knowledge(conversation_id, phase)
+        if sales_knowledge:
+            system_prompt += f"\n\n{sales_knowledge}"
 
         messages: list[dict[str, str]] = [
             {"role": "system", "content": system_prompt}
@@ -219,23 +321,28 @@ class AgentService:
         # Build context including the new user message and RAG context
         context = await self.build_context(conversation_id, phase, user_message)
 
-        try:
-            # Call OpenAI API
-            response = self.client.chat.completions.create(
-                model=self.settings.openai_model,
-                messages=context,  # type: ignore[arg-type]
-                max_completion_tokens=1000,
-                temperature=0.7,
-            )
+        # Check if mock mode is enabled
+        if self.settings.mock_openai:
+            logger.info("Mock mode enabled - returning mock response")
+            agent_content = self._get_mock_response(phase, user_message)
+        else:
+            try:
+                # Call OpenAI API
+                response = self.client.chat.completions.create(
+                    model=self.settings.openai_model,
+                    messages=context,  # type: ignore[arg-type]
+                    max_completion_tokens=1000,
+                    temperature=0.7,
+                )
 
-            agent_content = response.choices[0].message.content or ""
+                agent_content = response.choices[0].message.content or ""
 
-        except OpenAIError as e:
-            logger.error("OpenAI API error: %s", str(e))
-            agent_content = (
-                "I apologize, but I'm having trouble processing your request right now. "
-                "Please try again in a moment."
-            )
+            except OpenAIError as e:
+                logger.error("OpenAI API error: %s", str(e))
+                agent_content = (
+                    "I apologize, but I'm having trouble processing your request right now. "
+                    "Please try again in a moment."
+                )
 
         # Store agent response
         agent_msg_data = await self.conversation_service.add_message(

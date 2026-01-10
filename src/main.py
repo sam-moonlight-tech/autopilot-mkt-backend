@@ -23,6 +23,7 @@ from src.api.routes import (
 )
 from src.api.routes.checkout import orders_router, router as checkout_router
 from src.core.config import get_settings
+from src.core.rate_limiter import init_rate_limiter, shutdown_rate_limiter
 from src.core.stripe import configure_stripe
 
 # Configure logging
@@ -53,8 +54,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     configure_stripe()
     logger.info("Stripe SDK configured")
 
+    # Initialize rate limiter with cleanup task
+    await init_rate_limiter()
+    logger.info("Rate limiter initialized")
+
     yield
     # Shutdown
+    await shutdown_rate_limiter()
+    logger.info("Rate limiter shutdown")
     logger.info("Shutting down %s", settings.app_name)
 
 

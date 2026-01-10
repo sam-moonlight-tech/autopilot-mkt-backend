@@ -5,7 +5,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, status
 
-from src.api.deps import AuthContext, CurrentUser, DualAuth
+from src.api.deps import AuthContext, CurrentUser, DualAuth, SessionRateLimit
 from src.schemas.conversation import (
     ConversationCreate,
     ConversationListResponse,
@@ -271,27 +271,49 @@ async def delete_conversation(
     response_model=MessageWithAgentResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Send message",
-    description="Sends a message and receives an agent response.",
+    description="Sends a message and receives an agent response. Rate limited to 15 messages per minute for anonymous sessions.",
+    responses={
+        429: {
+            "description": "Rate limit exceeded (anonymous sessions only)",
+            "headers": {
+                "Retry-After": {
+                    "description": "Seconds until rate limit resets",
+                    "schema": {"type": "integer"},
+                },
+                "X-RateLimit-Limit": {
+                    "description": "Maximum requests per window",
+                    "schema": {"type": "integer"},
+                },
+                "X-RateLimit-Remaining": {
+                    "description": "Remaining requests in current window",
+                    "schema": {"type": "integer"},
+                },
+            },
+        }
+    },
 )
 async def send_message(
     conversation_id: UUID,
     data: MessageCreate,
     auth: DualAuth,
+    _rate_limit: SessionRateLimit,
 ) -> MessageWithAgentResponse:
     """Send a message to a conversation and get agent response.
 
     Works for both authenticated users and anonymous sessions.
+    Rate limited to 15 messages per minute for anonymous sessions.
 
     Args:
         conversation_id: The conversation's UUID.
         data: Message content.
         auth: Dual auth context (user or session).
+        _rate_limit: Rate limit check (enforced for sessions only).
 
     Returns:
         MessageWithAgentResponse: Both user and agent messages.
 
     Raises:
-        HTTPException: 404 if not found, 403 if no access.
+        HTTPException: 404 if not found, 403 if no access, 429 if rate limited.
     """
     await _check_conversation_access(conversation_id, auth)
 

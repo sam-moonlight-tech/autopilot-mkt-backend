@@ -1,6 +1,6 @@
 """Unit tests for AgentService."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import UUID
 
 import pytest
@@ -37,7 +37,7 @@ class TestGetSystemPrompt:
         with patch("src.services.agent_service.get_openai_client"):
             with patch("src.services.agent_service.get_settings"):
                 service = AgentService()
-                prompt = service.get_system_prompt(ConversationPhase.SELECTION)
+                prompt = service.get_system_prompt(ConversationPhase.GREENLIGHT)
 
                 assert "Selection" in prompt
                 assert "recommend" in prompt.lower() or "product" in prompt.lower()
@@ -57,7 +57,7 @@ class TestBuildContext:
                 with patch(
                     "src.services.agent_service.ConversationService"
                 ) as mock_conv_service:
-                    mock_conv_service.return_value.get_recent_messages.return_value = []
+                    mock_conv_service.return_value.get_recent_messages = AsyncMock(return_value=[])
 
                     service = AgentService()
                     context = await service.build_context(
@@ -85,7 +85,7 @@ class TestBuildContext:
                 with patch(
                     "src.services.agent_service.ConversationService"
                 ) as mock_conv_service:
-                    mock_conv_service.return_value.get_recent_messages.return_value = history
+                    mock_conv_service.return_value.get_recent_messages = AsyncMock(return_value=history)
 
                     service = AgentService()
                     context = await service.build_context(
@@ -112,7 +112,8 @@ class TestBuildContext:
                     "src.services.agent_service.ConversationService"
                 ) as mock_conv_service:
                     # Verify limit is passed to get_recent_messages
-                    mock_conv_service.return_value.get_recent_messages.return_value = []
+                    mock_get_recent_messages = AsyncMock(return_value=[])
+                    mock_conv_service.return_value.get_recent_messages = mock_get_recent_messages
 
                     service = AgentService()
                     await service.build_context(
@@ -120,7 +121,7 @@ class TestBuildContext:
                         phase=ConversationPhase.DISCOVERY,
                     )
 
-                    mock_conv_service.return_value.get_recent_messages.assert_called_once_with(
+                    mock_get_recent_messages.assert_called_once_with(
                         UUID("770e8400-e29b-41d4-a716-446655440000"), limit=5
                     )
 
@@ -171,12 +172,12 @@ class TestGenerateResponse:
                 with patch(
                     "src.services.agent_service.ConversationService"
                 ) as mock_conv_service:
-                    mock_conv_service.return_value.get_conversation.return_value = conversation
-                    mock_conv_service.return_value.get_recent_messages.return_value = []
-                    mock_conv_service.return_value.add_message.side_effect = [
+                    mock_conv_service.return_value.get_conversation = AsyncMock(return_value=conversation)
+                    mock_conv_service.return_value.get_recent_messages = AsyncMock(return_value=[])
+                    mock_conv_service.return_value.add_message = AsyncMock(side_effect=[
                         user_message,
                         agent_message,
-                    ]
+                    ])
 
                     service = AgentService()
                     user_msg, agent_msg = await service.generate_response(

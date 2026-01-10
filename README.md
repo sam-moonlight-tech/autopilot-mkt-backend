@@ -307,6 +307,46 @@ You can also manually add entries to the JSON files. Each entry should follow th
 }
 ```
 
+### Stripe Product Synchronization
+
+The robot catalog products must be synchronized with Stripe before checkout sessions can be created. The database migration includes placeholder Stripe IDs that need to be replaced with real Stripe product and price IDs.
+
+#### Running Stripe Product Sync
+
+To sync all robot products to Stripe:
+
+```bash
+# Activate virtual environment
+source venv/bin/activate
+
+# Set Stripe secret key (required)
+export STRIPE_SECRET_KEY="sk_test_..."
+
+# Run sync script
+python scripts/sync_stripe_products.py
+```
+
+The sync script will:
+
+- Read all robots from the `robot_catalog` table
+- Create Stripe products for each robot with name, description, and metadata
+- Create recurring monthly prices based on the `monthly_lease` amount
+- Update the database with real Stripe product and price IDs
+- Skip robots that already have valid Stripe IDs
+
+**Important Notes:**
+
+- The script replaces placeholder Stripe IDs (like `'prod_pudu_cc1_pro'`) with real Stripe IDs
+- Each robot gets a Stripe Product and a recurring monthly Price
+- Prices are created in USD with monthly billing intervals
+- The script verifies existing Stripe IDs before creating new ones to avoid duplicates
+
+**When to Run:**
+
+- After running the database migration that creates the `robot_catalog` table
+- After adding new robots to the catalog
+- If Stripe products were accidentally deleted or need to be recreated
+
 ## API Documentation
 
 ### Core Endpoints

@@ -8,20 +8,23 @@ from fastapi import Cookie, Depends, Header, HTTPException, Request, Response, s
 
 from src.api.middleware.auth import AuthError, AuthErrorCode, decode_jwt
 from src.api.middleware.error_handler import RateLimitError
+from src.core.config import get_settings
 from src.core.rate_limiter import get_rate_limiter
 from src.schemas.auth import UserContext
 from src.services.session_service import SessionService
 
 
-# Session cookie configuration
-SESSION_COOKIE_CONFIG = {
-    "key": "autopilot_session",
-    "max_age": 2592000,  # 30 days
-    "httponly": True,
-    "secure": True,  # Set to False in development
-    "samesite": "lax",
-    "path": "/",
-}
+def get_session_cookie_config() -> dict:
+    """Get session cookie configuration from settings."""
+    settings = get_settings()
+    return {
+        "key": settings.session_cookie_name,
+        "max_age": settings.session_cookie_max_age,
+        "httponly": True,
+        "secure": settings.session_cookie_secure,
+        "samesite": "lax",
+        "path": "/",
+    }
 
 
 @dataclass
@@ -48,9 +51,9 @@ class AuthContext:
         return self.user is not None
 
     @property
-    def profile_id(self) -> UUID | None:
-        """Get the profile ID if authenticated."""
-        return self.user.profile_id if self.user else None
+    def user_id(self) -> UUID | None:
+        """Get the user ID if authenticated."""
+        return self.user.user_id if self.user else None
 
     @property
     def session_id(self) -> UUID | None:
@@ -155,7 +158,8 @@ def get_session_cookie(request: Request) -> str | None:
     Returns:
         str | None: The session token or None if not present.
     """
-    return request.cookies.get(SESSION_COOKIE_CONFIG["key"])
+    config = get_session_cookie_config()
+    return request.cookies.get(config["key"])
 
 
 def set_session_cookie(response: Response, token: str) -> None:
@@ -165,14 +169,15 @@ def set_session_cookie(response: Response, token: str) -> None:
         response: FastAPI response object.
         token: The session token to set.
     """
+    config = get_session_cookie_config()
     response.set_cookie(
-        key=SESSION_COOKIE_CONFIG["key"],
+        key=config["key"],
         value=token,
-        max_age=SESSION_COOKIE_CONFIG["max_age"],
-        httponly=SESSION_COOKIE_CONFIG["httponly"],
-        secure=SESSION_COOKIE_CONFIG["secure"],
-        samesite=SESSION_COOKIE_CONFIG["samesite"],
-        path=SESSION_COOKIE_CONFIG["path"],
+        max_age=config["max_age"],
+        httponly=config["httponly"],
+        secure=config["secure"],
+        samesite=config["samesite"],
+        path=config["path"],
     )
 
 
@@ -182,9 +187,10 @@ def clear_session_cookie(response: Response) -> None:
     Args:
         response: FastAPI response object.
     """
+    config = get_session_cookie_config()
     response.delete_cookie(
-        key=SESSION_COOKIE_CONFIG["key"],
-        path=SESSION_COOKIE_CONFIG["path"],
+        key=config["key"],
+        path=config["path"],
     )
 
 

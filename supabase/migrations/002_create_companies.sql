@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS invitations (
     expires_at TIMESTAMPTZ NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     accepted_at TIMESTAMPTZ,
-    UNIQUE(company_id, email, status) -- Prevent duplicate pending invitations
+    UNIQUE(company_id, email, status)
 );
 
 -- Create indexes for invitations
@@ -63,10 +63,23 @@ CREATE TRIGGER update_companies_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
--- RLS Policies for companies
+-- ============================================================================
+-- RLS Policies for companies (non-recursive)
+-- ============================================================================
 
--- Policy: Company members can view their company
-CREATE POLICY "Members can view company"
+-- Policy: Owners can view their own company (checks profiles, not company_members)
+CREATE POLICY "Owners can view own company"
+    ON companies FOR SELECT
+    USING (
+        EXISTS (
+            SELECT 1 FROM profiles p
+            WHERE p.id = companies.owner_id
+            AND p.user_id = auth.uid()
+        )
+    );
+
+-- Policy: Members can view company they belong to
+CREATE POLICY "Members can view their company"
     ON companies FOR SELECT
     USING (
         EXISTS (
@@ -104,22 +117,23 @@ CREATE POLICY "Service role full access to companies"
     ON companies FOR ALL
     USING (auth.role() = 'service_role');
 
--- RLS Policies for company_members
+-- ============================================================================
+-- RLS Policies for company_members (non-recursive - avoid self-reference)
+-- ============================================================================
 
--- Policy: Company members can view other members
-CREATE POLICY "Members can view company members"
+-- Policy: Users can view their OWN membership record (no recursion)
+CREATE POLICY "Users can view own membership"
     ON company_members FOR SELECT
     USING (
         EXISTS (
-            SELECT 1 FROM company_members cm
-            JOIN profiles p ON cm.profile_id = p.id
-            WHERE cm.company_id = company_members.company_id
+            SELECT 1 FROM profiles p
+            WHERE p.id = company_members.profile_id
             AND p.user_id = auth.uid()
         )
     );
 
--- Policy: Company owner can manage members
-CREATE POLICY "Owner can manage members"
+-- Policy: Company owners can view/manage all members (checks companies.owner_id)
+CREATE POLICY "Owners can manage company members"
     ON company_members FOR ALL
     USING (
         EXISTS (
@@ -135,16 +149,18 @@ CREATE POLICY "Service role full access to company_members"
     ON company_members FOR ALL
     USING (auth.role() = 'service_role');
 
+-- ============================================================================
 -- RLS Policies for invitations
+-- ============================================================================
 
--- Policy: Company members can view invitations
-CREATE POLICY "Members can view invitations"
+-- Policy: Company owners can view invitations
+CREATE POLICY "Owners can view invitations"
     ON invitations FOR SELECT
     USING (
         EXISTS (
-            SELECT 1 FROM company_members cm
-            JOIN profiles p ON cm.profile_id = p.id
-            WHERE cm.company_id = invitations.company_id
+            SELECT 1 FROM companies c
+            JOIN profiles p ON c.owner_id = p.id
+            WHERE c.id = invitations.company_id
             AND p.user_id = auth.uid()
         )
     );

@@ -73,6 +73,34 @@ class CompanyService:
 
         return response.data if response and response.data else None
 
+    async def get_user_company(self, profile_id: UUID) -> dict[str, Any] | None:
+        """Get the company a user belongs to.
+
+        Returns the first company the user is a member of.
+
+        Args:
+            profile_id: The user's profile UUID.
+
+        Returns:
+            dict | None: The company data or None if user has no company.
+        """
+        # Get user's company membership
+        membership_response = (
+            self.client.table("company_members")
+            .select("company_id")
+            .eq("profile_id", str(profile_id))
+            .limit(1)
+            .execute()
+        )
+
+        if not membership_response.data:
+            return None
+
+        company_id = membership_response.data[0]["company_id"]
+
+        # Get company details
+        return await self.get_company(UUID(company_id))
+
     async def is_member(self, company_id: UUID, profile_id: UUID) -> bool:
         """Check if a profile is a member of a company.
 

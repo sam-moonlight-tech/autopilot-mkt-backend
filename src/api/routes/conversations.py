@@ -10,14 +10,20 @@ from src.schemas.conversation import (
     ConversationCreate,
     ConversationListResponse,
     ConversationResponse,
+    CurrentConversationResponse,
 )
+from src.models.conversation import ConversationPhase
 from src.schemas.message import (
+    DiscoveryState,
     MessageCreate,
     MessageListResponse,
     MessageWithAgentResponse,
 )
+from src.services.extraction_constants import REQUIRED_QUESTION_KEYS
 from src.services.agent_service import AgentService
+from src.services.company_service import CompanyService
 from src.services.conversation_service import ConversationService
+from src.services.discovery_profile_service import DiscoveryProfileService
 from src.services.profile_extraction_service import ProfileExtractionService
 from src.services.profile_service import ProfileService
 from src.services.session_service import SessionService
@@ -121,7 +127,7 @@ async def create_conversation(
 
     return ConversationResponse(
         id=conversation["id"],
-        user_id=conversation.get("user_id"),
+        profile_id=conversation.get("profile_id"),
         company_id=conversation.get("company_id"),
         title=conversation["title"],
         phase=conversation["phase"],
@@ -130,6 +136,136 @@ async def create_conversation(
         last_message_at=None,
         created_at=conversation["created_at"],
         updated_at=conversation["updated_at"],
+    )
+
+
+@router.get(
+    "/current",
+    response_model=CurrentConversationResponse,
+    summary="Get or create current conversation",
+    description="Returns the current active conversation with context. Creates one if none exists. Includes recent messages for resuming chat.",
+)
+async def get_current_conversation(
+    auth: DualAuth,
+) -> CurrentConversationResponse:
+    """Get or create the current conversation with context.
+
+    For authenticated users:
+    - Returns most recent conversation or creates new one
+    - Injects discovery profile context (company name, answers)
+
+    For anonymous sessions:
+    - Returns session's linked conversation or creates new one
+    - Injects session answers as context
+
+    Args:
+        auth: Dual auth context (user or session).
+
+    Returns:
+        CurrentConversationResponse: Conversation, messages, and is_new flag.
+    """
+    conversation_service = ConversationService()
+    session_service = SessionService()
+
+    conversation: dict
+    is_new: bool
+    context: dict = {}
+
+    if auth.is_authenticated and auth.user:
+        # Authenticated user flow
+        profile_service = ProfileService()
+        discovery_service = DiscoveryProfileService()
+        company_service = CompanyService()
+
+        # Get user profile
+        profile = await profile_service.get_or_create_profile(
+            auth.user.user_id, auth.user.email
+        )
+        profile_id = UUID(profile["id"])
+
+        # Get discovery profile for context
+        discovery_profile = await discovery_service.get_by_profile_id(profile_id)
+        if discovery_profile:
+            answers = discovery_profile.get("answers", {})
+            if answers:
+                context["discovery_answers"] = answers
+                # Extract company name if available
+                if "company_name" in answers:
+                    context["company_name"] = answers["company_name"].get("value")
+
+        # Get user's company for context
+        company = await company_service.get_user_company(profile_id)
+        company_id = UUID(company["id"]) if company else None
+        if company:
+            context["company_name"] = company.get("name")
+            context["company_id"] = company["id"]
+
+        # Get or create conversation (context only used if creating new)
+        conversation, is_new = await conversation_service.get_or_create_current_for_profile(
+            profile_id=profile_id,
+            company_id=company_id,
+            context=context,
+        )
+    elif auth.session:
+        # Anonymous session flow
+        session = await session_service.get_session_by_id(auth.session.session_id)
+
+        if session:
+            answers = session.get("answers", {})
+            if answers:
+                context["discovery_answers"] = answers
+                if "company_name" in answers:
+                    context["company_name"] = answers["company_name"].get("value")
+
+        # Get or create conversation (context only used if creating new)
+        conversation, is_new = await conversation_service.get_or_create_current_for_session(
+            session_id=auth.session.session_id,
+            context=context,
+        )
+
+        # Link conversation to session if new
+        if is_new:
+            await session_service.set_conversation(
+                auth.session.session_id, UUID(conversation["id"])
+            )
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required",
+        )
+
+    # Get recent messages for chat history
+    messages_data, _, _ = await conversation_service.get_messages(
+        UUID(conversation["id"]), limit=50
+    )
+    messages = [
+        {
+            "id": str(m.id),
+            "role": m.role,
+            "content": m.content,
+            "created_at": m.created_at.isoformat() if m.created_at else None,
+        }
+        for m in messages_data
+    ]
+
+    # Get message count
+    message_count = len(messages_data)
+
+    return CurrentConversationResponse(
+        conversation=ConversationResponse(
+            id=conversation["id"],
+            profile_id=conversation.get("profile_id"),
+            company_id=conversation.get("company_id"),
+            title=conversation["title"],
+            phase=conversation["phase"],
+            metadata=conversation.get("metadata", {}),
+            message_count=message_count,
+            last_message_at=messages_data[-1].created_at if messages_data else None,
+            created_at=conversation["created_at"],
+            updated_at=conversation["updated_at"],
+        ),
+        is_new=is_new,
+        messages=messages,
     )
 
 
@@ -212,7 +348,7 @@ async def get_conversation(
 
     return ConversationResponse(
         id=conversation["id"],
-        user_id=conversation.get("user_id"),
+        profile_id=conversation.get("profile_id"),
         company_id=conversation.get("company_id"),
         title=conversation["title"],
         phase=conversation["phase"],
@@ -254,7 +390,7 @@ async def delete_conversation(
         )
 
     # Only owner can delete
-    if conversation["user_id"] != str(profile_id):
+    if conversation["profile_id"] != str(profile_id):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only the conversation owner can delete it",
@@ -303,6 +439,8 @@ async def send_message(
     Works for both authenticated users and anonymous sessions.
     Rate limited to 15 messages per minute for anonymous sessions.
 
+    During discovery phase, returns intelligent chips and discovery state.
+
     Args:
         conversation_id: The conversation's UUID.
         data: Message content.
@@ -310,28 +448,82 @@ async def send_message(
         _rate_limit: Rate limit check (enforced for sessions only).
 
     Returns:
-        MessageWithAgentResponse: Both user and agent messages.
+        MessageWithAgentResponse: User message, agent message, chips, and discovery state.
 
     Raises:
         HTTPException: 404 if not found, 403 if no access, 429 if rate limited.
     """
     await _check_conversation_access(conversation_id, auth)
 
+    # Get conversation to check phase
+    conversation_service = ConversationService()
+    conversation = await conversation_service.get_conversation(conversation_id)
+    if not conversation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conversation not found",
+        )
+
+    phase = ConversationPhase(conversation["phase"])
+    session_id = auth.session.session_id if auth.session else None
+    profile_id = None
+    if auth.is_authenticated and auth.user:
+        profile_id = await _get_user_profile_id(auth.user)
+
     agent_service = AgentService()
-    user_message, agent_message = await agent_service.generate_response(
-        conversation_id=conversation_id,
-        user_message=data.content,
-        metadata=data.metadata,
-    )
+    chips: list[str] = []
+    discovery_state: DiscoveryState | None = None
+
+    # Use intelligent discovery response for discovery phase
+    if phase == ConversationPhase.DISCOVERY:
+        result = await agent_service.generate_discovery_response(
+            conversation_id=conversation_id,
+            user_message=data.content,
+            session_id=session_id,
+            profile_id=profile_id,
+            metadata=data.metadata,
+        )
+
+        user_message = result["user_message"]
+        agent_message = result["agent_message"]
+        chips = result["chips"]
+
+        # Build discovery state from session or discovery profile
+        current_answers: dict = {}
+        if profile_id:
+            # Authenticated user - get answers from discovery profile
+            discovery_service = DiscoveryProfileService()
+            discovery_profile = await discovery_service.get_by_profile_id(profile_id)
+            if discovery_profile:
+                current_answers = discovery_profile.get("answers", {})
+        elif session_id:
+            # Anonymous user - get answers from session
+            session_service = SessionService()
+            session = await session_service.get_session_by_id(session_id)
+            if session:
+                current_answers = session.get("answers", {})
+
+        answered_keys = list(current_answers.keys())
+        missing_keys = [k for k in REQUIRED_QUESTION_KEYS if k not in current_answers]
+        progress = int((len(answered_keys) / len(REQUIRED_QUESTION_KEYS)) * 100) if REQUIRED_QUESTION_KEYS else 0
+
+        discovery_state = DiscoveryState(
+            ready_for_roi=result["ready_for_roi"],
+            answered_keys=answered_keys,
+            missing_keys=missing_keys,
+            progress_percent=min(progress, 100),
+        )
+    else:
+        # ROI/Greenlight phases use standard response
+        user_message, agent_message = await agent_service.generate_response(
+            conversation_id=conversation_id,
+            user_message=data.content,
+            metadata=data.metadata,
+        )
 
     # Trigger profile extraction after agent response (non-blocking on failure)
     try:
         extraction_service = ProfileExtractionService()
-        session_id = auth.session.session_id if auth.session else None
-        profile_id = None
-        if auth.is_authenticated and auth.user:
-            profile_id = await _get_user_profile_id(auth.user)
-
         extraction_result = await extraction_service.extract_and_update(
             conversation_id=conversation_id,
             session_id=session_id,
@@ -351,6 +543,8 @@ async def send_message(
     return MessageWithAgentResponse(
         user_message=user_message,
         agent_message=agent_message,
+        chips=chips,
+        discovery_state=discovery_state,
     )
 
 

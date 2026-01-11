@@ -35,7 +35,7 @@ class ConversationResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID = Field(description="Conversation unique identifier")
-    user_id: UUID | None = Field(default=None, description="Owner profile ID (None for session-owned)")
+    profile_id: UUID | None = Field(default=None, description="Owner profile ID (None for session-owned)")
     company_id: UUID | None = Field(default=None, description="Associated company ID")
     title: str = Field(description="Conversation title")
     phase: ConversationPhase = Field(description="Current conversation phase")
@@ -54,3 +54,18 @@ class ConversationListResponse(BaseModel):
     conversations: list[ConversationResponse] = Field(description="List of conversations")
     next_cursor: str | None = Field(default=None, description="Cursor for next page")
     has_more: bool = Field(default=False, description="Whether more results exist")
+
+
+class CurrentConversationResponse(BaseModel):
+    """Schema for GET /conversations/current response.
+
+    Returns conversation with messages for resuming chat state.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    conversation: ConversationResponse = Field(description="The current conversation")
+    is_new: bool = Field(description="True if conversation was just created")
+    messages: list[dict[str, Any]] = Field(
+        default_factory=list, description="Recent messages for chat history"
+    )

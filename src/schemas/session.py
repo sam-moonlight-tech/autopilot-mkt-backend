@@ -47,6 +47,33 @@ class ROIInputsSchema(BaseModel):
     manualMonthlyHours: float = Field(ge=0, description="Current monthly hours spent on manual cleaning")
 
 
+# Payment method options
+PaymentMethod = Literal["card", "paypal", "bank"]
+
+
+class TeamMemberSchema(BaseModel):
+    """Schema for a team member in greenlight phase."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    email: str = Field(description="Team member email address")
+    name: str = Field(description="Team member display name")
+    role: str = Field(description="Team member role/title")
+
+
+class GreenlightSchema(BaseModel):
+    """Schema for greenlight phase data.
+
+    Matches the frontend greenlight interface.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    target_start_date: str | None = Field(default=None, description="Target deployment start date (ISO format)")
+    team_members: list[TeamMemberSchema] = Field(default_factory=list, description="Team members for deployment")
+    payment_method: PaymentMethod | None = Field(default=None, description="Selected payment method")
+
+
 class SessionUpdate(BaseModel):
     """Schema for updating a session via PUT /sessions/me.
 
@@ -61,6 +88,7 @@ class SessionUpdate(BaseModel):
     roi_inputs: ROIInputsSchema | None = Field(default=None, description="ROI calculation inputs")
     selected_product_ids: list[UUID] | None = Field(default=None, description="Selected product/robot IDs")
     timeframe: Timeframe | None = Field(default=None, description="ROI calculation timeframe")
+    greenlight: GreenlightSchema | None = Field(default=None, description="Greenlight phase data")
 
 
 class SessionResponse(BaseModel):
@@ -75,6 +103,7 @@ class SessionResponse(BaseModel):
     roi_inputs: ROIInputsSchema | None = Field(default=None, description="ROI calculation inputs")
     selected_product_ids: list[UUID] = Field(default_factory=list, description="Selected product/robot IDs")
     timeframe: str | None = Field(default=None, description="ROI calculation timeframe")
+    greenlight: GreenlightSchema | None = Field(default=None, description="Greenlight phase data")
     conversation_id: UUID | None = Field(default=None, description="Associated conversation ID")
     expires_at: datetime = Field(description="Session expiration timestamp")
     created_at: datetime = Field(description="Session creation timestamp")

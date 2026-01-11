@@ -1,10 +1,6 @@
--- Rebuild robot_catalog table with updated schema and new seed data
--- This migration drops and recreates the table for a fresh start
+-- Create robot_catalog table
+-- Stores robot products with Stripe integration for both test and production environments
 
--- Drop existing table (cascade drops policies, triggers, indexes)
-DROP TABLE IF EXISTS robot_catalog CASCADE;
-
--- Recreate robot_catalog table with updated schema
 CREATE TABLE robot_catalog (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     sku VARCHAR(50) UNIQUE,
@@ -21,8 +17,12 @@ CREATE TABLE robot_catalog (
     key_reasons TEXT[] NOT NULL DEFAULT '{}',
     specs TEXT[] NOT NULL DEFAULT '{}',
     image_url TEXT,
-    stripe_product_id VARCHAR(255) NOT NULL,
-    stripe_lease_price_id VARCHAR(255) NOT NULL,
+    -- Production Stripe IDs
+    stripe_product_id VARCHAR(255) NOT NULL DEFAULT '',
+    stripe_lease_price_id VARCHAR(255) NOT NULL DEFAULT '',
+    -- Test Stripe IDs (separate for test environment)
+    stripe_product_id_test VARCHAR(255) NOT NULL DEFAULT '',
+    stripe_lease_price_id_test VARCHAR(255) NOT NULL DEFAULT '',
     embedding_id VARCHAR(255),
     active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -55,6 +55,7 @@ CREATE TRIGGER update_robot_catalog_updated_at
     EXECUTE FUNCTION update_updated_at_column();
 
 -- Seed data from Marketplace MVP Robot SKU database
+-- Stripe IDs will be populated by sync_stripe_products.py script
 INSERT INTO robot_catalog (sku, name, manufacturer, category, best_for, modes, surfaces, monthly_lease, purchase_price, time_efficiency, key_reasons, specs, stripe_product_id, stripe_lease_price_id)
 VALUES
 -- Pudu CC1 Pro - Premium 4-in-1 Scrubber
@@ -71,8 +72,8 @@ VALUES
     0.80,
     ARRAY['4-in-1 cleaning capability', 'Advanced LiDAR + Vision navigation', '24/7 capable with 15 min/day human touch'],
     ARRAY['700-1000 m²/h coverage', '5h runtime', 'LiFePO₄ battery', '70cm min aisle width', 'Auto-docking'],
-    'prod_pudu_cc1_pro',
-    'price_pudu_cc1_pro_monthly'
+    'placeholder_prod_pudu_cc1_pro',
+    'placeholder_price_pudu_cc1_pro_monthly'
 ),
 -- Pudu CC1 - Standard 4-in-1 Scrubber
 (
@@ -88,8 +89,8 @@ VALUES
     0.80,
     ARRAY['4-in-1 cleaning capability', 'First-time autonomy friendly', 'Cost-effective multi-surface cleaning'],
     ARRAY['700-1000 m²/h coverage', '5h runtime', 'LiFePO₄ battery', '70cm min aisle width', 'Auto-docking'],
-    'prod_pudu_cc1',
-    'price_pudu_cc1_monthly'
+    'placeholder_prod_pudu_cc1',
+    'placeholder_price_pudu_cc1_monthly'
 ),
 -- Pudu MT1 Vac - Industrial Vacuum
 (
@@ -105,8 +106,8 @@ VALUES
     0.80,
     ARRAY['High-speed vacuum coverage up to 1400 m²/h', 'Advanced LiDAR + VSLAM navigation', 'Long 4-5h runtime'],
     ARRAY['Up to 1400 m²/h coverage', '4-5h runtime', 'Li-ion battery', '75cm min aisle width', 'Auto-charging dock'],
-    'prod_pudu_mt1_vac',
-    'price_pudu_mt1_vac_monthly'
+    'placeholder_prod_pudu_mt1_vac',
+    'placeholder_price_pudu_mt1_vac_monthly'
 ),
 -- Avidbots Neo 2W - Enterprise Scrubber
 (
@@ -122,8 +123,8 @@ VALUES
     0.85,
     ARRAY['Industry-leading 2600 m²/h coverage', 'BrainOS navigation', 'Built for 24/7 industrial environments'],
     ARRAY['~2600 m²/h coverage', '3.5h runtime', 'Lead-Acid 36V battery', '1.5m min aisle width', 'Manual docking'],
-    'prod_avidbots_neo2w',
-    'price_avidbots_neo2w_monthly'
+    'placeholder_prod_avidbots_neo2w',
+    'placeholder_price_avidbots_neo2w_monthly'
 ),
 -- Avidbots Kas - Compact Scrubber
 (
@@ -139,8 +140,8 @@ VALUES
     0.80,
     ARRAY['Compact design for tight spaces', 'Fast 2h charge time', 'Swappable LiFePO₄ battery'],
     ARRAY['500-1000 m²/h coverage', '3-4h runtime', 'LiFePO₄ swappable battery', '1.0m min aisle width'],
-    'prod_avidbots_kas',
-    'price_avidbots_kas_monthly'
+    'placeholder_prod_avidbots_kas',
+    'placeholder_price_avidbots_kas_monthly'
 ),
 -- Tennant T7AMR - Large Retail Scrubber
 (
@@ -156,8 +157,8 @@ VALUES
     0.80,
     ARRAY['Industry-proven teach & repeat mode', '6-year useful life', 'Customer-validated performance'],
     ARRAY['~2000 m²/h coverage', '3.7h runtime', 'Lead-Acid or Li-ion options', '~90cm min aisle width'],
-    'prod_tennant_t7amr',
-    'price_tennant_t7amr_monthly'
+    'placeholder_prod_tennant_t7amr',
+    'placeholder_price_tennant_t7amr_monthly'
 ),
 -- Tennant T380AMR - Mid-Size Scrubber
 (
@@ -173,8 +174,8 @@ VALUES
     0.80,
     ARRAY['Easy teach & repeat navigation', 'Fits narrow retail aisles', 'Customer-validated reliability'],
     ARRAY['Up to 3106 m²/h coverage', '~3h runtime', 'Lead-Acid or Li-ion options', '75cm min aisle width'],
-    'prod_tennant_t380amr',
-    'price_tennant_t380amr_monthly'
+    'placeholder_prod_tennant_t380amr',
+    'placeholder_price_tennant_t380amr_monthly'
 ),
 -- Gausium Phantas - All-in-One Cleaner
 (
@@ -190,8 +191,8 @@ VALUES
     0.60,
     ARRAY['True 4-in-1 cleaning', 'Works on carpet and hard floors', 'Auto-refill docking option'],
     ARRAY['350-700 m²/h coverage', '4-4.5h runtime', 'LiFePO₄ battery', '52-60cm min aisle width', 'Auto-docking'],
-    'prod_gausium_phantas',
-    'price_gausium_phantas_monthly'
+    'placeholder_prod_gausium_phantas',
+    'placeholder_price_gausium_phantas_monthly'
 ),
 -- Gausium Vacuum 40 - Office Vacuum
 (
@@ -207,8 +208,8 @@ VALUES
     0.30,
     ARRAY['Minimal 5 min/day human touch', 'Self-charging dock', 'Quiet operation for hospitality'],
     ARRAY['~500 m²/h coverage', '3-4h runtime', 'Lithium-ion battery', '60cm min aisle width', 'Auto-charging'],
-    'prod_gausium_v40',
-    'price_gausium_v40_monthly'
+    'placeholder_prod_gausium_v40',
+    'placeholder_price_gausium_v40_monthly'
 ),
 -- Keenon Kleenbot C40 - Compact 4-in-1
 (
@@ -224,8 +225,8 @@ VALUES
     0.80,
     ARRAY['Affordable 4-in-1 solution', 'LiDAR + Vision navigation', 'Swappable battery design'],
     ARRAY['~1100 m²/h coverage', '5h runtime', 'LiFePO₄ swappable battery', '65cm min aisle width'],
-    'prod_keenon_c40',
-    'price_keenon_c40_monthly'
+    'placeholder_prod_keenon_c40',
+    'placeholder_price_keenon_c40_monthly'
 ),
 -- Keenon Kleenbot C30 - Budget Vacuum
 (
@@ -241,6 +242,6 @@ VALUES
     0.80,
     ARRAY['Lowest entry cost', 'Long 6h runtime', 'Easy deployment (complexity 2/5)'],
     ARRAY['600 m²/h coverage', '6h runtime', 'Lithium-ion battery', '65cm min aisle width', 'Plug-in dock'],
-    'prod_keenon_c30',
-    'price_keenon_c30_monthly'
+    'placeholder_prod_keenon_c30',
+    'placeholder_price_keenon_c30_monthly'
 );

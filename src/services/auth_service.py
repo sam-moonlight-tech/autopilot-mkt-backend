@@ -6,7 +6,7 @@ from uuid import UUID
 
 from src.api.middleware.error_handler import ValidationError
 from src.core.config import get_settings
-from src.core.supabase import get_supabase_client
+from src.core.supabase import create_auth_client
 
 logger = logging.getLogger(__name__)
 
@@ -15,8 +15,13 @@ class AuthService:
     """Service for managing user authentication."""
 
     def __init__(self) -> None:
-        """Initialize auth service with Supabase client."""
-        self.client = get_supabase_client()
+        """Initialize auth service with isolated Supabase client.
+
+        Uses create_auth_client() instead of get_supabase_client() to avoid
+        polluting the singleton client's Authorization header when auth
+        operations call set_session().
+        """
+        self.client = create_auth_client()
         self.settings = get_settings()
 
     async def signup(

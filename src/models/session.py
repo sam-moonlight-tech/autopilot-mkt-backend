@@ -38,6 +38,25 @@ class ROIInputs(TypedDict):
     manualMonthlyHours: float
 
 
+class TeamMember(TypedDict):
+    """Structure for a team member in greenlight phase."""
+
+    email: str
+    name: str
+    role: str
+
+
+class Greenlight(TypedDict, total=False):
+    """Structure for greenlight phase data.
+
+    Matches the frontend greenlight interface.
+    """
+
+    target_start_date: str | None
+    team_members: list[TeamMember]
+    payment_method: Literal["card", "paypal", "bank"] | None
+
+
 class Session(TypedDict):
     """Session table row representation.
 
@@ -54,6 +73,7 @@ class Session(TypedDict):
     roi_inputs: ROIInputs | None
     selected_product_ids: list[UUID]
     timeframe: str | None
+    greenlight: Greenlight | None
     metadata: dict
     claimed_by_profile_id: UUID | None
     expires_at: datetime
@@ -75,6 +95,7 @@ class SessionCreate(TypedDict, total=False):
     roi_inputs: ROIInputs | None
     selected_product_ids: list[UUID]
     timeframe: str | None
+    greenlight: Greenlight | None
     metadata: dict
     expires_at: datetime
 
@@ -92,5 +113,6 @@ class SessionUpdate(TypedDict, total=False):
     roi_inputs: ROIInputs | None
     selected_product_ids: list[UUID]
     timeframe: str | None
+    greenlight: Greenlight | None
     metadata: dict
     claimed_by_profile_id: UUID | None

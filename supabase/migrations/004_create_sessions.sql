@@ -14,12 +14,16 @@ CREATE TABLE IF NOT EXISTS sessions (
     roi_inputs JSONB DEFAULT NULL,
     selected_product_ids UUID[] DEFAULT '{}',
     timeframe VARCHAR(50),
+    greenlight JSONB DEFAULT NULL,
     metadata JSONB DEFAULT '{}',
     claimed_by_profile_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
     expires_at TIMESTAMPTZ NOT NULL DEFAULT NOW() + INTERVAL '30 days',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Add comment to document greenlight structure
+COMMENT ON COLUMN sessions.greenlight IS 'Greenlight phase data: { target_start_date: string, team_members: [{email, name, role}], payment_method: "card"|"paypal"|"bank" }';
 
 -- Create indexes for sessions
 CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(session_token);
@@ -35,3 +39,8 @@ CREATE TRIGGER update_sessions_updated_at
     BEFORE UPDATE ON sessions
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
+
+-- Add FK from conversations.session_id to sessions.id
+ALTER TABLE conversations
+    ADD CONSTRAINT fk_conversations_session_id
+    FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE SET NULL;

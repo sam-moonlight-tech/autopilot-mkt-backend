@@ -1,10 +1,17 @@
 """Robot catalog API routes."""
 
+from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Query, status
 
-from src.schemas.robot import RobotListResponse, RobotResponse
+from src.schemas.robot import (
+    FilterMetadata,
+    RobotFilters,
+    RobotListResponse,
+    RobotResponse,
+    RobotSortField,
+)
 from src.services.robot_catalog_service import RobotCatalogService
 
 router = APIRouter(prefix="/robots", tags=["robots"])
@@ -13,19 +20,113 @@ router = APIRouter(prefix="/robots", tags=["robots"])
 @router.get(
     "",
     response_model=RobotListResponse,
-    summary="List all robots",
-    description="Returns all active robots in the catalog. No authentication required.",
+    summary="List all robots with optional filters",
+    description="Returns robots with optional filtering, sorting, and search. No authentication required.",
 )
-async def list_robots() -> RobotListResponse:
-    """List all active robots in the catalog.
+async def list_robots(
+    # Sorting
+    sort: Annotated[
+        RobotSortField,
+        Query(description="Sort order for results"),
+    ] = RobotSortField.FEATURED,
+    # Price filters
+    price_min: Annotated[
+        float | None,
+        Query(ge=0, description="Minimum monthly lease price"),
+    ] = None,
+    price_max: Annotated[
+        float | None,
+        Query(ge=0, description="Maximum monthly lease price"),
+    ] = None,
+    # Size filter
+    size: Annotated[
+        str | None,
+        Query(description="Size category: small, medium, large, enterprise"),
+    ] = None,
+    # Methods filter (can be multiple)
+    methods: Annotated[
+        list[str] | None,
+        Query(description="Filter by cleaning modes (e.g., vacuum, mop, scrub)"),
+    ] = None,
+    # Surfaces filter (can be multiple)
+    surfaces: Annotated[
+        list[str] | None,
+        Query(description="Filter by supported surfaces"),
+    ] = None,
+    # Category filter
+    category: Annotated[
+        str | None,
+        Query(description="Filter by robot category"),
+    ] = None,
+    # Shipping filter
+    ship: Annotated[
+        str | None,
+        Query(description="Shipping option: in_stock, ships_soon, pre_order"),
+    ] = None,
+    # Search
+    search: Annotated[
+        str | None,
+        Query(description="Text search in name, category, best_for"),
+    ] = None,
+) -> RobotListResponse:
+    """List all active robots with optional filtering.
+
+    Args:
+        sort: Sort order for results.
+        price_min: Minimum monthly lease price.
+        price_max: Maximum monthly lease price.
+        size: Size category filter.
+        methods: Cleaning methods filter (multiple allowed).
+        surfaces: Surfaces filter (multiple allowed).
+        category: Category filter.
+        ship: Shipping/availability filter.
+        search: Text search query.
 
     Returns:
-        RobotListResponse: List of active robots.
+        RobotListResponse: Filtered and sorted list of robots.
     """
     service = RobotCatalogService()
-    robots = await service.list_robots(active_only=True)
 
-    return RobotListResponse(items=[RobotResponse(**robot) for robot in robots])
+    # Build filters object
+    filters = RobotFilters(
+        sort=sort,
+        price_min=price_min,
+        price_max=price_max,
+        size=size,
+        methods=methods,
+        surfaces=surfaces,
+        category=category,
+        ship=ship,
+        search=search,
+    )
+
+    # Get filtered robots
+    robots, total = await service.list_robots_filtered(filters, active_only=True)
+
+    return RobotListResponse(
+        items=[RobotResponse(**robot) for robot in robots],
+        total=total,
+        filters_applied=filters,
+    )
+
+
+@router.get(
+    "/filters",
+    response_model=FilterMetadata,
+    summary="Get available filter options",
+    description="Returns available filter options based on current robot catalog. Use for populating filter dropdowns.",
+)
+async def get_filter_options() -> FilterMetadata:
+    """Get available filter options for the robot catalog.
+
+    Returns all available options for each filter type based on
+    the current robots in the catalog, with counts for each option.
+
+    Returns:
+        FilterMetadata: Available filter options.
+    """
+    service = RobotCatalogService()
+    return await service.get_filter_metadata()
 
 
 @router.get(

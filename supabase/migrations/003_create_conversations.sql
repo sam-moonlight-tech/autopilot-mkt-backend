@@ -1,30 +1,33 @@
--- Create conversations table
+-- Create conversations and messages tables
 -- Stores user conversations for agent interactions
 
-CREATE TYPE conversation_phase AS ENUM ('discovery', 'roi', 'selection', 'completed');
+-- Create conversation_phase enum (aligned with frontend)
+CREATE TYPE conversation_phase AS ENUM ('discovery', 'roi', 'greenlight');
 
 CREATE TABLE IF NOT EXISTS conversations (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
     company_id UUID REFERENCES companies(id) ON DELETE SET NULL,
+    session_id UUID, -- FK added after sessions table is created
     title VARCHAR(255) NOT NULL DEFAULT 'New Conversation',
     phase conversation_phase NOT NULL DEFAULT 'discovery',
     metadata JSONB DEFAULT '{}',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    -- Ensure conversation has an owner (user or session)
+    CONSTRAINT chk_conversation_owner CHECK (user_id IS NOT NULL OR session_id IS NOT NULL)
 );
 
 -- Create indexes for conversations
 CREATE INDEX IF NOT EXISTS idx_conversations_user_id ON conversations(user_id);
 CREATE INDEX IF NOT EXISTS idx_conversations_company_id ON conversations(company_id);
+CREATE INDEX IF NOT EXISTS idx_conversations_session_id ON conversations(session_id);
 CREATE INDEX IF NOT EXISTS idx_conversations_created_at ON conversations(created_at DESC);
 
 -- Enable Row Level Security
 ALTER TABLE conversations ENABLE ROW LEVEL SECURITY;
 
 -- Create messages table
--- Stores individual messages within conversations
-
 CREATE TYPE message_role AS ENUM ('user', 'assistant', 'system');
 
 CREATE TABLE IF NOT EXISTS messages (
@@ -49,7 +52,9 @@ CREATE TRIGGER update_conversations_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
+-- ============================================================================
 -- RLS Policies for conversations
+-- ============================================================================
 
 -- Policy: Users can view their own conversations
 CREATE POLICY "Users can view own conversations"
@@ -113,7 +118,9 @@ CREATE POLICY "Service role full access to conversations"
     ON conversations FOR ALL
     USING (auth.role() = 'service_role');
 
+-- ============================================================================
 -- RLS Policies for messages
+-- ============================================================================
 
 -- Policy: Users can view messages in their conversations
 CREATE POLICY "Users can view messages in own conversations"
@@ -128,7 +135,7 @@ CREATE POLICY "Users can view messages in own conversations"
     );
 
 -- Policy: Company members can view messages in company conversations
-CREATE POLICY "Company members can view messages"
+CREATE POLICY "Company members can view messages in company conversations"
     ON messages FOR SELECT
     USING (
         EXISTS (
@@ -136,6 +143,7 @@ CREATE POLICY "Company members can view messages"
             JOIN company_members cm ON cm.company_id = c.company_id
             JOIN profiles p ON cm.profile_id = p.id
             WHERE c.id = messages.conversation_id
+            AND c.company_id IS NOT NULL
             AND p.user_id = auth.uid()
         )
     );

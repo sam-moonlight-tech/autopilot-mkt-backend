@@ -75,6 +75,42 @@ async def create_company(
 
 
 @router.get(
+    "/me",
+    response_model=CompanyResponse,
+    summary="Get current user's company",
+    description="Returns the company the authenticated user belongs to.",
+)
+async def get_my_company(
+    user: CurrentUser,
+) -> CompanyResponse:
+    """Get the current user's company.
+
+    Returns the company the user is a member of.
+    If user belongs to multiple companies, returns the first one.
+
+    Args:
+        user: The authenticated user context.
+
+    Returns:
+        CompanyResponse: The user's company.
+
+    Raises:
+        HTTPException: 404 if user has no company.
+    """
+    profile_id = await _get_user_profile_id(user)
+    service = CompanyService()
+    company = await service.get_user_company(profile_id)
+
+    if not company:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No company found for this user",
+        )
+
+    return CompanyResponse(**company)
+
+
+@router.get(
     "/{company_id}",
     response_model=CompanyResponse,
     summary="Get company details",

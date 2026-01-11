@@ -1,5 +1,6 @@
 """Agent service for OpenAI-powered conversations."""
 
+import json
 import logging
 from typing import Any
 from uuid import UUID
@@ -12,8 +13,11 @@ from src.models.conversation import ConversationPhase
 from src.models.message import MessageRole
 from src.schemas.message import MessageResponse
 from src.services.conversation_service import ConversationService
+from src.services.extraction_constants import REQUIRED_QUESTIONS, REQUIRED_QUESTION_KEYS
 from src.services.rag_service import RAGService, get_rag_service
+from src.services.robot_catalog_service import RobotCatalogService
 from src.services.sales_knowledge_service import SalesKnowledgeService, get_sales_knowledge_service
+from src.services.session_service import SessionService
 
 logger = logging.getLogger(__name__)
 
@@ -91,6 +95,35 @@ Guidelines:
 - Be supportive of their decision-making process""",
 }
 
+# JSON Schema for structured discovery responses with chips
+DISCOVERY_RESPONSE_SCHEMA = {
+    "type": "json_schema",
+    "json_schema": {
+        "name": "discovery_response",
+        "schema": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "string",
+                    "description": "Agent's conversational response"
+                },
+                "chips": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Quick reply options for the user (empty array for text inputs)"
+                },
+                "ready_for_roi": {
+                    "type": "boolean",
+                    "description": "True when enough info gathered to show ROI analysis"
+                }
+            },
+            "required": ["content", "chips", "ready_for_roi"],
+            "additionalProperties": False
+        },
+        "strict": True
+    }
+}
+
 
 class AgentService:
     """Service for AI agent interactions."""
@@ -99,16 +132,19 @@ class AgentService:
         self,
         rag_service: RAGService | None = None,
         sales_knowledge_service: SalesKnowledgeService | None = None,
+        session_service: SessionService | None = None,
     ) -> None:
         """Initialize agent service.
 
         Args:
             rag_service: Optional RAG service for testing.
             sales_knowledge_service: Optional sales knowledge service for testing.
+            session_service: Optional session service for testing.
         """
         self.client = get_openai_client()
         self.settings = get_settings()
         self.conversation_service = ConversationService()
+        self.session_service = session_service or SessionService()
         self._rag_service = rag_service
         self._sales_knowledge_service = sales_knowledge_service
 
@@ -362,3 +398,241 @@ class AgentService:
         )
 
         return user_msg_response, agent_msg_response
+
+    def _build_discovery_prompt(
+        self,
+        current_answers: dict[str, Any],
+        missing_questions: list[dict[str, Any]],
+        robot_catalog: list[dict[str, Any]],
+    ) -> str:
+        """Build an intelligent discovery system prompt.
+
+        The prompt tells the agent what's already known, what still needs
+        to be gathered, and what robots are available in the catalog.
+
+        Args:
+            current_answers: Dict of already answered questions.
+            missing_questions: List of required questions not yet answered.
+            robot_catalog: List of available robots in the catalog.
+
+        Returns:
+            str: The system prompt for discovery.
+        """
+        # Format what we already know
+        if current_answers:
+            answered_summary = "\n".join(
+                f"- {key}: {ans.get('value', 'unknown')}"
+                for key, ans in current_answers.items()
+            )
+        else:
+            answered_summary = "None yet - this is a new conversation."
+
+        # Format what we still need to learn
+        if missing_questions:
+            missing_summary = "\n".join(
+                f"- {q['key']}: \"{q['question']}\" (chips: {q['chips'] or 'free text'})"
+                for q in missing_questions[:3]  # Show top 3 priorities
+            )
+            remaining_count = len(missing_questions)
+        else:
+            missing_summary = "All required questions answered!"
+            remaining_count = 0
+
+        # Format the robot catalog
+        if robot_catalog:
+            catalog_summary = "\n".join(
+                f"- **{r.get('name', 'Unknown')}**: {r.get('category', 'Robot')} | "
+                f"Best for: {r.get('best_for', 'general use')} | "
+                f"Modes: {', '.join(r.get('modes', []))} | "
+                f"Monthly lease: ${r.get('monthly_lease', 0):,.0f}"
+                for r in robot_catalog
+            )
+        else:
+            catalog_summary = "No robots available in catalog."
+
+        return f"""You are Autopilot, a premium robotics procurement consultant.
+
+AVAILABLE ROBOT CATALOG (ONLY recommend from this list):
+{catalog_summary}
+
+WHAT YOU KNOW ABOUT THIS CUSTOMER:
+{answered_summary}
+
+STILL NEED TO LEARN ({remaining_count} remaining):
+{missing_summary}
+
+INSTRUCTIONS:
+1. Acknowledge what the user just said naturally and warmly
+2. If there are missing questions, weave ONE into your response conversationally
+3. If the user's message ALREADY contains info about missing topics, acknowledge it - don't re-ask
+4. Set ready_for_roi=true ONLY when you have answers for most required questions (4+ of 6)
+5. Return chips matching the question you're asking, or empty array for open-ended questions
+6. When discussing specific robots, ONLY mention robots from the AVAILABLE ROBOT CATALOG above
+7. NEVER make up or hallucinate robot models - if asked about specific models, only reference the catalog
+
+TONE: Premium, consultative, efficient. Like a senior consultant who values the client's time.
+Don't be robotic or interrogative. If user gives rich context, adapt and skip redundant questions.
+
+IMPORTANT: Your response must be valid JSON with content (string), chips (array), and ready_for_roi (boolean)."""
+
+    async def generate_discovery_response(
+        self,
+        conversation_id: UUID,
+        user_message: str,
+        session_id: UUID | None = None,
+        profile_id: UUID | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Generate an intelligent discovery response with chips.
+
+        This method uses structured output to return the agent's response
+        along with contextual chip options and readiness state.
+
+        Args:
+            conversation_id: The conversation's UUID.
+            user_message: The user's message content.
+            session_id: Optional session ID to get current answers (anonymous users).
+            profile_id: Optional profile ID to get current answers (authenticated users).
+            metadata: Optional metadata for the user message.
+
+        Returns:
+            dict: {
+                "content": str,  # Agent's response
+                "chips": list[str],  # Quick reply options
+                "ready_for_roi": bool,  # Whether to show ROI
+                "user_message": MessageResponse,
+                "agent_message": MessageResponse,
+            }
+        """
+        # Get current answers from session or discovery profile
+        current_answers: dict[str, Any] = {}
+        if profile_id:
+            # Authenticated user - get answers from discovery profile
+            from src.services.discovery_profile_service import DiscoveryProfileService
+            discovery_service = DiscoveryProfileService()
+            discovery_profile = await discovery_service.get_by_profile_id(profile_id)
+            if discovery_profile:
+                current_answers = discovery_profile.get("answers", {})
+        elif session_id:
+            # Anonymous user - get answers from session
+            session = await self.session_service.get_session_by_id(session_id)
+            if session:
+                current_answers = session.get("answers", {})
+
+        # Determine which required questions are still missing
+        answered_keys = set(current_answers.keys())
+        missing_questions = [
+            q for q in REQUIRED_QUESTIONS
+            if q["key"] not in answered_keys
+        ]
+
+        # Fetch robot catalog for context
+        robot_catalog_service = RobotCatalogService()
+        robot_catalog = await robot_catalog_service.list_robots(active_only=True)
+
+        # Store user message
+        user_msg_data = await self.conversation_service.add_message(
+            conversation_id=conversation_id,
+            role=MessageRole.USER,
+            content=user_message,
+            metadata=metadata,
+        )
+
+        user_msg_response = MessageResponse(
+            id=user_msg_data["id"],
+            conversation_id=user_msg_data["conversation_id"],
+            role=user_msg_data["role"],
+            content=user_msg_data["content"],
+            metadata=user_msg_data.get("metadata", {}),
+            created_at=user_msg_data["created_at"],
+        )
+
+        # Build discovery-specific prompt with robot catalog
+        system_prompt = self._build_discovery_prompt(
+            current_answers, missing_questions, robot_catalog
+        )
+
+        # Get conversation history
+        recent_messages = await self.conversation_service.get_recent_messages(
+            conversation_id, limit=self.settings.max_context_messages
+        )
+
+        messages: list[dict[str, str]] = [
+            {"role": "system", "content": system_prompt}
+        ]
+        for msg in recent_messages:
+            messages.append({"role": msg["role"], "content": msg["content"]})
+
+        # Generate response with structured output
+        if self.settings.mock_openai:
+            logger.info("Mock mode enabled - returning mock discovery response")
+            # Return mock structured response
+            next_q = missing_questions[0] if missing_questions else None
+            result = {
+                "content": f"Thanks for sharing! {next_q['question'] if next_q else 'I have enough information to show you ROI projections. Would you like to proceed?'}",
+                "chips": next_q["chips"] if next_q and next_q["chips"] else [],
+                "ready_for_roi": len(missing_questions) <= 2,
+            }
+        else:
+            try:
+                response = self.client.chat.completions.create(
+                    model=self.settings.openai_model,
+                    messages=messages,  # type: ignore[arg-type]
+                    response_format=DISCOVERY_RESPONSE_SCHEMA,
+                    max_completion_tokens=500,
+                    temperature=0.7,
+                )
+
+                result = json.loads(response.choices[0].message.content or "{}")
+
+                # Ensure required fields exist
+                if "content" not in result:
+                    result["content"] = "I'd love to learn more about your needs."
+                if "chips" not in result:
+                    result["chips"] = []
+                if "ready_for_roi" not in result:
+                    result["ready_for_roi"] = False
+
+            except OpenAIError as e:
+                logger.error("OpenAI API error in discovery: %s", str(e))
+                result = {
+                    "content": "I apologize, but I'm having trouble right now. Please try again.",
+                    "chips": [],
+                    "ready_for_roi": False,
+                }
+            except json.JSONDecodeError as e:
+                logger.error("JSON decode error in discovery response: %s", str(e))
+                result = {
+                    "content": "Let me try that again. What would you like to tell me about your facility?",
+                    "chips": [],
+                    "ready_for_roi": False,
+                }
+
+        # Store agent response with chips in metadata
+        agent_msg_data = await self.conversation_service.add_message(
+            conversation_id=conversation_id,
+            role=MessageRole.ASSISTANT,
+            content=result["content"],
+            metadata={
+                "model": self.settings.openai_model,
+                "chips": result["chips"],
+                "ready_for_roi": result["ready_for_roi"],
+            },
+        )
+
+        agent_msg_response = MessageResponse(
+            id=agent_msg_data["id"],
+            conversation_id=agent_msg_data["conversation_id"],
+            role=agent_msg_data["role"],
+            content=agent_msg_data["content"],
+            metadata=agent_msg_data.get("metadata", {}),
+            created_at=agent_msg_data["created_at"],
+        )
+
+        return {
+            "content": result["content"],
+            "chips": result["chips"],
+            "ready_for_roi": result["ready_for_roi"],
+            "user_message": user_msg_response,
+            "agent_message": agent_msg_response,
+        }

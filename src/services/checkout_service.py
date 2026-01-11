@@ -84,7 +84,7 @@ class CheckoutService:
         order_data = {
             "profile_id": str(profile_id) if profile_id else None,
             "session_id": str(session_id) if session_id else None,
-            "stripe_checkout_session_id": "",  # Will update after Stripe call
+            "stripe_checkout_session_id": None,  # Will update after Stripe call
             "status": "pending",
             "line_items": line_items,
             "total_cents": total_cents,
@@ -109,15 +109,26 @@ class CheckoutService:
                 ],
                 "success_url": success_url,
                 "cancel_url": cancel_url,
-                "customer_creation": "if_required",
                 "metadata": {
                     "order_id": str(order_id),
                     "session_id": str(session_id) if session_id else "",
                 },
             }
 
+            # For Stripe Accounts V2 in test mode, we need to create a customer first
+            # In production mode, Stripe handles customer creation automatically
             if customer_email:
-                checkout_params["customer_email"] = customer_email
+                # Create or find existing customer
+                existing_customers = self.stripe.Customer.list(email=customer_email, limit=1)
+                if existing_customers.data:
+                    checkout_params["customer"] = existing_customers.data[0].id
+                else:
+                    customer = self.stripe.Customer.create(email=customer_email)
+                    checkout_params["customer"] = customer.id
+            else:
+                # Create anonymous customer for test mode compatibility
+                customer = self.stripe.Customer.create()
+                checkout_params["customer"] = customer.id
 
             stripe_session = self.stripe.checkout.Session.create(**checkout_params)
 

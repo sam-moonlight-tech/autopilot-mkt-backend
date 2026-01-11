@@ -163,14 +163,37 @@ supabase db push
 1. **Start the development server**
 
 ```bash
-# Option 1: Direct Python
+# Option 1: Development daemon with auto-reload (recommended)
+./scripts/dev-server.sh start
+
+# Check status
+./scripts/dev-server.sh status
+
+# View logs (follow mode)
+./scripts/dev-server.sh logs
+
+# Stop server
+./scripts/dev-server.sh stop
+
+# Restart server
+./scripts/dev-server.sh restart
+
+# Option 2: Direct Python (runs in foreground)
 uvicorn src.main:app --reload --host 0.0.0.0 --port 8080
 
-# Option 2: Docker Compose (recommended for local dev)
+# Option 3: Docker Compose
 docker-compose up
 ```
 
 The API will be available at `http://localhost:8080`
+
+**Development Daemon Features:**
+
+- Runs in the background as a daemon process
+- Auto-reloads on code changes (monitors `src/` directory)
+- Logs to `.dev-server.log`
+- Easy start/stop/restart/status commands
+- Automatically manages PID file
 
 - API Documentation: `http://localhost:8080/docs` (Swagger UI)
 - Alternative Docs: `http://localhost:8080/redoc` (ReDoc)

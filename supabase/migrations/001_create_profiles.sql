@@ -1,6 +1,15 @@
 -- Create profiles table
 -- Links to Supabase auth.users and stores additional profile information
 
+-- Create function to auto-update updated_at timestamp (used by all tables)
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
 CREATE TABLE IF NOT EXISTS profiles (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -37,15 +46,6 @@ CREATE POLICY "Users can update own profile"
 CREATE POLICY "Service role has full access"
     ON profiles FOR ALL
     USING (auth.role() = 'service_role');
-
--- Create function to auto-update updated_at timestamp
-CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = NOW();
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
 
 -- Create trigger for auto-updating updated_at
 CREATE TRIGGER update_profiles_updated_at

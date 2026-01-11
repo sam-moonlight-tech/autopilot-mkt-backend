@@ -95,6 +95,19 @@ class DiscoveryProfileService:
         if "roi_inputs" in update_data and update_data["roi_inputs"]:
             roi = update_data["roi_inputs"]
             update_data["roi_inputs"] = roi.model_dump() if hasattr(roi, "model_dump") else roi
+        if "greenlight" in update_data and update_data["greenlight"]:
+            greenlight = update_data["greenlight"]
+            if hasattr(greenlight, "model_dump"):
+                greenlight_dict = greenlight.model_dump()
+                # Convert nested team_members Pydantic models
+                if "team_members" in greenlight_dict:
+                    greenlight_dict["team_members"] = [
+                        m.model_dump() if hasattr(m, "model_dump") else m
+                        for m in greenlight_dict["team_members"]
+                    ]
+                update_data["greenlight"] = greenlight_dict
+            else:
+                update_data["greenlight"] = greenlight
 
         # Convert UUID list to string list for PostgreSQL
         if "selected_product_ids" in update_data:
@@ -141,6 +154,7 @@ class DiscoveryProfileService:
             "roi_inputs": session_data.get("roi_inputs"),
             "selected_product_ids": session_data.get("selected_product_ids", []),
             "timeframe": session_data.get("timeframe"),
+            "greenlight": session_data.get("greenlight"),
         }
 
         if existing:

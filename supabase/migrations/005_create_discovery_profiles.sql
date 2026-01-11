@@ -10,9 +10,13 @@ CREATE TABLE IF NOT EXISTS discovery_profiles (
     roi_inputs JSONB DEFAULT NULL,
     selected_product_ids UUID[] DEFAULT '{}',
     timeframe VARCHAR(50),
+    greenlight JSONB DEFAULT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Add comment to document greenlight structure
+COMMENT ON COLUMN discovery_profiles.greenlight IS 'Greenlight phase data: { target_start_date: string, team_members: [{email, name, role}], payment_method: "card"|"paypal"|"bank" }';
 
 -- Create index for profile_id lookups
 CREATE INDEX IF NOT EXISTS idx_discovery_profiles_profile_id ON discovery_profiles(profile_id);

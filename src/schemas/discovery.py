@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from src.schemas.session import (
     DiscoveryAnswerSchema,
+    GreenlightSchema,
     ROIInputsSchema,
     SessionPhase,
     Timeframe,
@@ -27,6 +28,7 @@ class DiscoveryProfileUpdate(BaseModel):
     roi_inputs: ROIInputsSchema | None = Field(default=None, description="ROI calculation inputs")
     selected_product_ids: list[UUID] | None = Field(default=None, description="Selected product/robot IDs")
     timeframe: Timeframe | None = Field(default=None, description="ROI calculation timeframe")
+    greenlight: GreenlightSchema | None = Field(default=None, description="Greenlight phase data")
 
 
 class DiscoveryProfileResponse(BaseModel):
@@ -42,5 +44,6 @@ class DiscoveryProfileResponse(BaseModel):
     roi_inputs: ROIInputsSchema | None = Field(default=None, description="ROI calculation inputs")
     selected_product_ids: list[UUID] = Field(default_factory=list, description="Selected product/robot IDs")
     timeframe: str | None = Field(default=None, description="ROI calculation timeframe")
+    greenlight: GreenlightSchema | None = Field(default=None, description="Greenlight phase data")
     created_at: datetime = Field(description="Profile creation timestamp")
     updated_at: datetime = Field(description="Last update timestamp")

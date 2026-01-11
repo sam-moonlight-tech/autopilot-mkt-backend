@@ -32,7 +32,7 @@ class Order(TypedDict):
     id: UUID
     profile_id: UUID | None
     session_id: UUID | None
-    stripe_checkout_session_id: str
+    stripe_checkout_session_id: str | None
     stripe_customer_id: str | None
     stripe_subscription_id: str | None
     status: OrderStatus
@@ -54,7 +54,7 @@ class OrderCreate(TypedDict, total=False):
 
     profile_id: UUID | None
     session_id: UUID | None
-    stripe_checkout_session_id: str
+    stripe_checkout_session_id: str | None
     status: OrderStatus
     line_items: list[OrderLineItem]
     total_cents: int

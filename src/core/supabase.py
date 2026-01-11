@@ -4,17 +4,23 @@ from functools import lru_cache
 from typing import Any
 
 from supabase import Client, create_client
+from supabase.lib.client_options import SyncClientOptions
+from supabase_auth import SyncMemoryStorage
 
 from src.core.config import get_settings
 
 
 @lru_cache
 def get_supabase_client() -> Client:
-    """Get cached Supabase client singleton.
+    """Get cached Supabase client singleton for database operations.
 
-    Uses service role key for backend operations, which bypasses RLS.
-    This should only be used for server-side operations where
-    proper authorization has already been verified.
+    Uses secret key (sb_secret_) for backend operations, which bypasses RLS
+    at the PostgREST level. This should only be used for server-side
+    database operations where proper authorization has already been verified.
+
+    IMPORTANT: Do NOT use this client for auth operations that call
+    set_session() - use create_auth_client() instead to avoid polluting
+    the singleton's Authorization header.
 
     Returns:
         Client: Supabase client instance.
@@ -23,6 +29,31 @@ def get_supabase_client() -> Client:
     return create_client(
         settings.supabase_url,
         settings.supabase_secret_key,
+    )
+
+
+def create_auth_client() -> Client:
+    """Create a fresh Supabase client for auth operations.
+
+    Use this for operations that call auth.set_session(), auth.sign_in_*(),
+    or any method that modifies the client's Authorization header.
+
+    This prevents session pollution of the singleton client used for
+    database operations. Each call creates a new isolated client instance.
+
+    Returns:
+        Client: Fresh Supabase client instance with isolated session storage.
+    """
+    settings = get_settings()
+    options = SyncClientOptions(
+        storage=SyncMemoryStorage(),
+        auto_refresh_token=False,
+        persist_session=False,
+    )
+    return create_client(
+        settings.supabase_url,
+        settings.supabase_secret_key,
+        options=options,
     )
 
 

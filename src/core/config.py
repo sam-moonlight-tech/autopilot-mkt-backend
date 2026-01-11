@@ -2,7 +2,7 @@
 
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -18,6 +18,7 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
+        env_file_priority="env_file",  # .env file takes precedence over shell env vars
     )
 
     # Application
@@ -50,7 +51,7 @@ class Settings(BaseSettings):
     openai_api_key: str = Field(..., description="OpenAI API key")
     openai_model: str = Field(default="gpt-4o", description="OpenAI model to use")
     max_context_messages: int = Field(default=20, description="Max messages to include in context")
-    mock_openai: bool = Field(default=False, description="Mock OpenAI responses for local testing (saves tokens)")
+    mock_openai: bool | None = Field(default=None, description="Mock OpenAI responses for local testing (saves tokens). Auto-enabled in development, disabled in production.")
 
     # Pinecone
     pinecone_api_key: str = Field(..., description="Pinecone API key")
@@ -82,6 +83,25 @@ class Settings(BaseSettings):
         description="Frontend application URL for email links",
     )
 
+    @model_validator(mode="after")
+    def set_mock_openai_default(self) -> "Settings":
+        """Set mock_openai based on environment if not explicitly set via MOCK_OPENAI env var.
+        
+        - Production (APP_ENV=production): Always False (unless MOCK_OPENAI env var is explicitly set)
+        - Development/Staging: True (unless MOCK_OPENAI env var is explicitly set)
+        
+        If MOCK_OPENAI env var is set, pydantic-settings already parsed it to a bool,
+        so we only set the default if it's None.
+        """
+        # If MOCK_OPENAI was explicitly set via env var, it's already a bool (not None)
+        # Only set default if it's None (meaning env var wasn't set)
+        if self.mock_openai is None:
+            # Production: always False
+            # Development/Staging: True  
+            self.mock_openai = self.app_env != "production"
+        
+        return self
+
     @property
     def cors_origins_list(self) -> list[str]:
         """Parse CORS origins string into a list."""
@@ -91,6 +111,11 @@ class Settings(BaseSettings):
     def is_production(self) -> bool:
         """Check if running in production environment."""
         return self.app_env == "production"
+
+    @property
+    def is_stripe_test_mode(self) -> bool:
+        """Check if using Stripe test keys."""
+        return self.stripe_secret_key.startswith("sk_test_")
 
 
 @lru_cache

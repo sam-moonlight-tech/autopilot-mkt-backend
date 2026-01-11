@@ -38,7 +38,7 @@ class ConversationService:
             dict: The created conversation data.
         """
         conversation_data = {
-            "user_id": str(user_profile_id),
+            "profile_id": str(user_profile_id),
             "title": data.title if data and data.title else self.DEFAULT_TITLE,
             "phase": ConversationPhase.DISCOVERY.value,
             "metadata": data.metadata if data and data.metadata else {},
@@ -99,18 +99,8 @@ class ConversationService:
 
         # Check if user is owner (for authenticated users)
         if profile_id:
-            # Get user_id from profile to compare with conversation.user_id
-            profile_response = (
-                self.client.table("profiles")
-                .select("user_id")
-                .eq("id", str(profile_id))
-                .maybe_single()
-                .execute()
-            )
-            if profile_response.data:
-                user_id = profile_response.data["user_id"]
-                if conversation.get("user_id") == str(user_id):
-                    return True
+            if conversation.get("profile_id") == str(profile_id):
+                return True
 
             # Check if conversation has a company and user is member
             if conversation.get("company_id"):
@@ -143,7 +133,7 @@ class ConversationService:
         query = (
             self.client.table("conversations")
             .select("*, messages(count)")
-            .eq("user_id", str(profile_id))
+            .eq("profile_id", str(profile_id))
             .order("created_at", desc=True)
             .limit(page_size + 1)  # Fetch one extra to check for more
         )
@@ -181,7 +171,7 @@ class ConversationService:
             conversations.append(
                 ConversationResponse(
                     id=row["id"],
-                    user_id=row["user_id"],
+                    profile_id=row["profile_id"],
                     company_id=row.get("company_id"),
                     title=row["title"],
                     phase=row["phase"],
@@ -381,7 +371,7 @@ class ConversationService:
         """
         conversation_data = {
             "session_id": str(session_id),
-            "user_id": None,  # No user for session-owned conversation
+            "profile_id": None,  # No profile for session-owned conversation
             "title": title or self.DEFAULT_TITLE,
             "phase": ConversationPhase.DISCOVERY.value,
             "metadata": metadata or {},
@@ -428,24 +418,10 @@ class ConversationService:
         Returns:
             dict | None: Updated conversation or None if not found.
         """
-        # Get user_id from profile
-        profile_response = (
-            self.client.table("profiles")
-            .select("user_id")
-            .eq("id", str(profile_id))
-            .maybe_single()
-            .execute()
-        )
-
-        if not profile_response.data:
-            return None
-
-        user_id = profile_response.data["user_id"]
-
-        # Update conversation to be owned by user instead of session
+        # Update conversation to be owned by profile instead of session
         response = (
             self.client.table("conversations")
-            .update({"user_id": str(user_id), "session_id": None})
+            .update({"profile_id": str(profile_id), "session_id": None})
             .eq("id", str(conversation_id))
             .execute()
         )
@@ -473,3 +449,94 @@ class ConversationService:
         )
 
         return response.data or []
+
+    async def get_or_create_current_for_profile(
+        self,
+        profile_id: UUID,
+        company_id: UUID | None = None,
+        context: dict[str, Any] | None = None,
+    ) -> tuple[dict[str, Any], bool]:
+        """Get the current conversation for a user or create one.
+
+        Returns the most recent conversation for the user's profile.
+        If no conversation exists, creates one with the provided context.
+
+        Args:
+            profile_id: The user's profile UUID.
+            company_id: Optional company ID for the conversation.
+            context: Optional context to store in metadata (discovery answers, etc.)
+
+        Returns:
+            tuple: (conversation_data, is_new) where is_new indicates if created.
+        """
+        # Try to get most recent conversation for this profile
+        response = (
+            self.client.table("conversations")
+            .select("*")
+            .eq("profile_id", str(profile_id))
+            .order("updated_at", desc=True)
+            .limit(1)
+            .execute()
+        )
+
+        if response.data:
+            # Return existing conversation
+            return response.data[0], False
+
+        # Create new conversation with context
+        metadata = context or {}
+        conversation_data = {
+            "profile_id": str(profile_id),
+            "title": self.DEFAULT_TITLE,
+            "phase": ConversationPhase.DISCOVERY.value,
+            "metadata": metadata,
+        }
+
+        if company_id:
+            conversation_data["company_id"] = str(company_id)
+
+        response = self.client.table("conversations").insert(conversation_data).execute()
+        return response.data[0], True
+
+    async def get_or_create_current_for_session(
+        self,
+        session_id: UUID,
+        context: dict[str, Any] | None = None,
+    ) -> tuple[dict[str, Any], bool]:
+        """Get or create the current conversation for a session.
+
+        Checks if session already has a linked conversation.
+        If not, creates one with the provided context.
+
+        Args:
+            session_id: The session's UUID.
+            context: Optional context to store in metadata (session answers, etc.)
+
+        Returns:
+            tuple: (conversation_data, is_new) where is_new indicates if created.
+        """
+        # Check if session already has a conversation
+        response = (
+            self.client.table("conversations")
+            .select("*")
+            .eq("session_id", str(session_id))
+            .order("updated_at", desc=True)
+            .limit(1)
+            .execute()
+        )
+
+        if response.data:
+            return response.data[0], False
+
+        # Create new conversation for session
+        metadata = context or {}
+        conversation_data = {
+            "session_id": str(session_id),
+            "profile_id": None,
+            "title": self.DEFAULT_TITLE,
+            "phase": ConversationPhase.DISCOVERY.value,
+            "metadata": metadata,
+        }
+
+        response = self.client.table("conversations").insert(conversation_data).execute()
+        return response.data[0], True

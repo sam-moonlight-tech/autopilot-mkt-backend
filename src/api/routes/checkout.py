@@ -4,7 +4,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, status
 
-from src.api.deps import DualAuth
+from src.api.deps import AuthContext, DualAuth
 from src.schemas.checkout import (
     CheckoutSessionCreate,
     CheckoutSessionResponse,
@@ -12,8 +12,18 @@ from src.schemas.checkout import (
     OrderResponse,
 )
 from src.services.checkout_service import CheckoutService
+from src.services.profile_service import ProfileService
 
 router = APIRouter(prefix="/checkout", tags=["checkout"])
+
+
+async def _get_profile_id_for_auth(auth: AuthContext) -> UUID | None:
+    """Get the profile ID for an authenticated user, creating profile if needed."""
+    if not auth.is_authenticated or not auth.user:
+        return None
+    service = ProfileService()
+    profile = await service.get_or_create_profile(auth.user.user_id, auth.user.email)
+    return UUID(profile["id"])
 
 
 @router.post(
@@ -45,7 +55,7 @@ async def create_checkout_session(
     service = CheckoutService()
 
     # Extract profile_id or session_id from auth context
-    profile_id = auth.profile_id if auth.is_authenticated else None
+    profile_id = await _get_profile_id_for_auth(auth)
     session_id = auth.session.session_id if auth.session else None
 
     try:
@@ -91,9 +101,10 @@ async def list_orders(auth: DualAuth) -> OrderListResponse:
         OrderListResponse: List of orders.
     """
     service = CheckoutService()
+    profile_id = await _get_profile_id_for_auth(auth)
 
-    if auth.is_authenticated and auth.profile_id:
-        orders = await service.get_orders_for_profile(auth.profile_id)
+    if profile_id:
+        orders = await service.get_orders_for_profile(profile_id)
     elif auth.session:
         orders = await service.get_orders_for_session(auth.session.session_id)
     else:
@@ -126,7 +137,7 @@ async def get_order(order_id: UUID, auth: DualAuth) -> OrderResponse:
     service = CheckoutService()
 
     # Check if user can access this order
-    profile_id = auth.profile_id if auth.is_authenticated else None
+    profile_id = await _get_profile_id_for_auth(auth)
     session_id = auth.session.session_id if auth.session else None
 
     can_access = await service.can_access_order(

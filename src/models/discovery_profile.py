@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import TypedDict
 from uuid import UUID
 
-from src.models.session import DiscoveryAnswer, ROIInputs, SessionPhase
+from src.models.session import DiscoveryAnswer, Greenlight, ROIInputs, SessionPhase
 
 
 class DiscoveryProfile(TypedDict):
@@ -22,6 +22,7 @@ class DiscoveryProfile(TypedDict):
     roi_inputs: ROIInputs | None
     selected_product_ids: list[UUID]
     timeframe: str | None
+    greenlight: Greenlight | None
     created_at: datetime
     updated_at: datetime
 
@@ -39,6 +40,7 @@ class DiscoveryProfileCreate(TypedDict, total=False):
     roi_inputs: ROIInputs | None
     selected_product_ids: list[UUID]
     timeframe: str | None
+    greenlight: Greenlight | None
 
 
 class DiscoveryProfileUpdate(TypedDict, total=False):
@@ -53,3 +55,4 @@ class DiscoveryProfileUpdate(TypedDict, total=False):
     roi_inputs: ROIInputs | None
     selected_product_ids: list[UUID]
     timeframe: str | None
+    greenlight: Greenlight | None

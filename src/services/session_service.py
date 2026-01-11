@@ -122,6 +122,19 @@ class SessionService:
         if "roi_inputs" in update_data and update_data["roi_inputs"]:
             roi = update_data["roi_inputs"]
             update_data["roi_inputs"] = roi.model_dump() if hasattr(roi, "model_dump") else roi
+        if "greenlight" in update_data and update_data["greenlight"]:
+            greenlight = update_data["greenlight"]
+            if hasattr(greenlight, "model_dump"):
+                greenlight_dict = greenlight.model_dump()
+                # Convert nested team_members Pydantic models
+                if "team_members" in greenlight_dict:
+                    greenlight_dict["team_members"] = [
+                        m.model_dump() if hasattr(m, "model_dump") else m
+                        for m in greenlight_dict["team_members"]
+                    ]
+                update_data["greenlight"] = greenlight_dict
+            else:
+                update_data["greenlight"] = greenlight
 
         # Convert UUID list to string list for PostgreSQL
         if "selected_product_ids" in update_data:
@@ -297,6 +310,7 @@ class SessionService:
             "roi_inputs": session.get("roi_inputs"),
             "selected_product_ids": session.get("selected_product_ids", []),
             "timeframe": session.get("timeframe"),
+            "greenlight": session.get("greenlight"),
         }
 
         if existing.data:
@@ -329,21 +343,10 @@ class SessionService:
             conversation_id: The conversation UUID.
             profile_id: The profile UUID to transfer to.
         """
-        # Get the user_id from the profile
-        profile_response = (
-            self.client.table("profiles")
-            .select("user_id")
-            .eq("id", str(profile_id))
-            .maybe_single()
-            .execute()
-        )
-
-        if profile_response.data:
-            user_id = profile_response.data["user_id"]
-            # Update conversation to be owned by the user instead of session
-            self.client.table("conversations").update(
-                {"user_id": str(user_id), "session_id": None}
-            ).eq("id", str(conversation_id)).execute()
+        # Update conversation to be owned by the profile instead of session
+        self.client.table("conversations").update(
+            {"profile_id": str(profile_id), "session_id": None}
+        ).eq("id", str(conversation_id)).execute()
 
     async def cleanup_expired_sessions(self) -> int:
         """Delete expired sessions to prevent table bloat.

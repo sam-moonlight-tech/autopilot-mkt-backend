@@ -31,13 +31,44 @@ class MessageResponse(BaseModel):
     created_at: datetime = Field(description="Creation timestamp")
 
 
+class DiscoveryState(BaseModel):
+    """Schema for discovery progress state."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    ready_for_roi: bool = Field(
+        default=False,
+        description="Whether enough info has been gathered for ROI analysis"
+    )
+    answered_keys: list[str] = Field(
+        default_factory=list,
+        description="List of question keys that have been answered"
+    )
+    missing_keys: list[str] = Field(
+        default_factory=list,
+        description="List of required question keys still needed"
+    )
+    progress_percent: int = Field(
+        default=0,
+        description="Percentage of required questions answered (0-100)"
+    )
+
+
 class MessageWithAgentResponse(BaseModel):
-    """Schema for message creation response including agent reply."""
+    """Schema for message creation response including agent reply, chips, and discovery state."""
 
     model_config = ConfigDict(from_attributes=True)
 
     user_message: MessageResponse = Field(description="The user's sent message")
     agent_message: MessageResponse = Field(description="The agent's response")
+    chips: list[str] = Field(
+        default_factory=list,
+        description="Quick reply chip options for the user"
+    )
+    discovery_state: DiscoveryState | None = Field(
+        default=None,
+        description="Discovery progress state (only present in discovery phase)"
+    )
 
 
 class MessageListResponse(BaseModel):

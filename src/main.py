@@ -22,6 +22,7 @@ from src.api.routes import (
     webhooks,
 )
 from src.api.routes.checkout import orders_router, router as checkout_router
+from src.api.routes.roi import roi_router
 from src.core.config import get_settings
 from src.core.rate_limiter import init_rate_limiter, shutdown_rate_limiter
 from src.core.stripe import configure_stripe
@@ -118,6 +119,9 @@ def create_app() -> FastAPI:
 
     # Robot catalog routes
     api_v1_router.include_router(robots.router)
+
+    # ROI and Greenlight routes
+    api_v1_router.include_router(roi_router)
 
     # Checkout and orders routes
     api_v1_router.include_router(checkout_router)

@@ -8,7 +8,8 @@ CREATE TABLE IF NOT EXISTS orders (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     profile_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
     session_id UUID REFERENCES sessions(id) ON DELETE SET NULL,
-    stripe_checkout_session_id VARCHAR(255) NOT NULL UNIQUE,
+    -- Nullable to allow order creation before Stripe checkout session
+    stripe_checkout_session_id VARCHAR(255) UNIQUE,
     stripe_customer_id VARCHAR(255),
     stripe_subscription_id VARCHAR(255),
     status order_status NOT NULL DEFAULT 'pending',
@@ -44,11 +45,21 @@ CREATE POLICY "Users can view own orders"
         )
     );
 
--- Policy: Service role has full access to orders
--- (Session-based order access is handled at service layer with service_role key)
+-- Policy: Users can insert their own orders (with their profile_id)
+CREATE POLICY "Users can insert own orders"
+    ON orders FOR INSERT
+    WITH CHECK (
+        profile_id IS NOT NULL
+        AND profile_id IN (
+            SELECT id FROM profiles WHERE user_id = auth.uid()
+        )
+    );
+
+-- Policy: Service role has full access to orders (with both USING and WITH CHECK)
 CREATE POLICY "Service role full access to orders"
     ON orders FOR ALL
-    USING (auth.role() = 'service_role');
+    USING (auth.role() = 'service_role')
+    WITH CHECK (auth.role() = 'service_role');
 
 -- Trigger for auto-updating updated_at
 CREATE TRIGGER update_orders_updated_at

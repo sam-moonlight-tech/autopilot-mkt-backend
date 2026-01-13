@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from src.api.middleware.error_handler import error_handler_middleware
+from src.api.middleware.request_size import request_size_limit_middleware
 from src.api.routes import (
     auth,
     companies,
@@ -26,6 +27,11 @@ from src.api.routes.roi import roi_router
 from src.core.config import get_settings
 from src.core.rate_limiter import init_rate_limiter, shutdown_rate_limiter
 from src.core.stripe import configure_stripe
+from src.core.token_budget import init_token_budget, shutdown_token_budget
+from src.services.recommendation_cache import (
+    init_recommendation_cache,
+    shutdown_recommendation_cache,
+)
 
 # Configure logging
 logging.basicConfig(
@@ -59,8 +65,20 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     await init_rate_limiter()
     logger.info("Rate limiter initialized")
 
+    # Initialize token budget tracker with cleanup task
+    await init_token_budget()
+    logger.info("Token budget tracker initialized")
+
+    # Initialize recommendation cache with cleanup task
+    await init_recommendation_cache()
+    logger.info("Recommendation cache initialized")
+
     yield
     # Shutdown
+    await shutdown_recommendation_cache()
+    logger.info("Recommendation cache shutdown")
+    await shutdown_token_budget()
+    logger.info("Token budget tracker shutdown")
     await shutdown_rate_limiter()
     logger.info("Rate limiter shutdown")
     logger.info("Shutting down %s", settings.app_name)
@@ -93,8 +111,11 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    # Add error handler middleware
+    # Add error handler middleware (outermost - catches all errors)
     app.add_middleware(BaseHTTPMiddleware, dispatch=error_handler_middleware)
+
+    # Add request size limit middleware (rejects oversized requests early)
+    app.add_middleware(BaseHTTPMiddleware, dispatch=request_size_limit_middleware)
 
     # Mount health routes at root level (no prefix)                                                                                          
     app.include_router(health.router)

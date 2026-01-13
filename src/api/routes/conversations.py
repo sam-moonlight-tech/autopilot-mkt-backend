@@ -170,6 +170,7 @@ async def get_current_conversation(
     conversation: dict
     is_new: bool
     context: dict = {}
+    profile_id: UUID | None = None  # Will be set for authenticated users
 
     if auth.is_authenticated and auth.user:
         # Authenticated user flow
@@ -185,13 +186,25 @@ async def get_current_conversation(
 
         # Get discovery profile for context
         discovery_profile = await discovery_service.get_by_profile_id(profile_id)
+        logger.info(
+            "Current conversation: profile_id=%s, discovery_profile_found=%s",
+            profile_id,
+            discovery_profile is not None,
+        )
         if discovery_profile:
             answers = discovery_profile.get("answers", {})
+            logger.info(
+                "Discovery profile answers: count=%d, keys=%s",
+                len(answers) if answers else 0,
+                list(answers.keys()) if answers else [],
+            )
             if answers:
                 context["discovery_answers"] = answers
                 # Extract company name if available
                 if "company_name" in answers:
                     context["company_name"] = answers["company_name"].get("value")
+        else:
+            logger.warning("No discovery profile found for profile_id=%s", profile_id)
 
         # Get user's company for context
         company = await company_service.get_user_company(profile_id)
@@ -238,12 +251,44 @@ async def get_current_conversation(
     messages_data, _, _ = await conversation_service.get_messages(
         UUID(conversation["id"]), limit=50
     )
+
+    # Generate initial greeting for new conversations OR existing conversations with no messages
+    # (handles migration from old frontend-only greetings)
+    if is_new or len(messages_data) == 0:
+        try:
+            agent_service = AgentService()
+            session_id_for_greeting = auth.session.session_id if auth.session else None
+
+            # Extract source context from request if available (for future use)
+            source_context = context.get("source_context")
+
+            await agent_service.generate_initial_greeting(
+                conversation_id=UUID(conversation["id"]),
+                session_id=session_id_for_greeting,
+                profile_id=profile_id,  # None for anonymous, UUID for authenticated
+                source_context=source_context,
+            )
+            logger.info(
+                "Generated initial greeting for conversation %s (is_new=%s, had_messages=%s)",
+                conversation["id"],
+                is_new,
+                len(messages_data) > 0,
+            )
+
+            # Re-fetch messages after generating greeting
+            messages_data, _, _ = await conversation_service.get_messages(
+                UUID(conversation["id"]), limit=50
+            )
+        except Exception as e:
+            logger.warning("Failed to generate initial greeting: %s", str(e), exc_info=True)
+            # Continue without greeting - frontend can handle empty messages
     messages = [
         {
             "id": str(m.id),
             "role": m.role,
             "content": m.content,
             "created_at": m.created_at.isoformat() if m.created_at else None,
+            "metadata": m.metadata if hasattr(m, 'metadata') and m.metadata else None,
         }
         for m in messages_data
     ]
@@ -522,6 +567,7 @@ async def send_message(
         )
 
     # Trigger profile extraction after agent response (non-blocking on failure)
+    # This updates the stored answers for future messages and ROI calculations
     try:
         extraction_service = ProfileExtractionService()
         extraction_result = await extraction_service.extract_and_update(
@@ -546,6 +592,68 @@ async def send_message(
         chips=chips,
         discovery_state=discovery_state,
     )
+
+
+@router.post(
+    "/{conversation_id}/transition",
+    summary="Generate phase transition message",
+    description="Generates a dynamic AI message for phase transitions (discovery→ROI or ROI→greenlight).",
+)
+async def generate_transition_message(
+    conversation_id: UUID,
+    auth: DualAuth,
+    transition_type: str = Query(
+        ...,
+        description="Type of transition: 'discovery_to_roi' or 'roi_to_greenlight'",
+    ),
+) -> dict:
+    """Generate a contextual message for phase transitions.
+
+    Uses AI to create a personalized message based on the user's discovery
+    profile, company context, and selected robot.
+
+    Args:
+        conversation_id: The conversation's UUID.
+        auth: Dual auth context (user or session).
+        transition_type: Type of transition.
+
+    Returns:
+        dict: {
+            "content": str,  # The transition message
+            "chips": list[str],  # Quick reply options
+        }
+    """
+    await _check_conversation_access(conversation_id, auth)
+
+    session_id = auth.session.session_id if auth.session else None
+    profile_id = None
+    if auth.is_authenticated and auth.user:
+        profile_id = await _get_user_profile_id(auth.user)
+
+    agent_service = AgentService()
+
+    try:
+        result = await agent_service.generate_phase_transition_message(
+            conversation_id=conversation_id,
+            transition_type=transition_type,
+            session_id=session_id,
+            profile_id=profile_id,
+        )
+        return {
+            "content": result["content"],
+            "chips": result["chips"],
+        }
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+    except Exception as e:
+        logger.error("Failed to generate transition message: %s", str(e), exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to generate transition message",
+        )
 
 
 @router.get(

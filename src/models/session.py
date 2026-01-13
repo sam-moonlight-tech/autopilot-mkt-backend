@@ -1,8 +1,10 @@
 """Session model type definitions for database operations."""
 
 from datetime import datetime
-from typing import Literal, TypedDict
+from typing import Literal
 from uuid import UUID
+
+from typing_extensions import TypedDict
 
 
 # Session phase enum values matching database enum

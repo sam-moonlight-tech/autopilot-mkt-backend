@@ -8,6 +8,7 @@ from typing import Any, Callable
 from fastapi import HTTPException, Request, Response, status
 from fastapi.responses import JSONResponse
 
+from src.core.token_budget import TokenBudgetError
 from src.schemas.common import ErrorResponse
 
 logger = logging.getLogger(__name__)
@@ -177,6 +178,30 @@ async def error_handler_middleware(request: Request, call_next: Callable[[Reques
         response.headers["X-RateLimit-Limit"] = "15"
         response.headers["X-RateLimit-Remaining"] = "0"
         response.headers["X-RateLimit-Reset"] = str(int(time.time()) + e.retry_after)
+        return response
+
+    except TokenBudgetError as e:
+        # Token budget exceeded - similar to rate limit but for daily token usage
+        logger.warning(
+            "Token budget exceeded: %s (used: %d, limit: %d)",
+            e.message,
+            e.tokens_used,
+            e.daily_limit,
+            extra={"request_id": request_id, "retry_after": e.retry_after},
+        )
+        response = create_error_response(
+            error_type="token_budget_exceeded",
+            message=e.message,
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            details=[{
+                "tokens_used": e.tokens_used,
+                "daily_limit": e.daily_limit,
+            }],
+            request_id=request_id,
+        )
+        response.headers["Retry-After"] = str(e.retry_after)
+        response.headers["X-TokenBudget-Used"] = str(e.tokens_used)
+        response.headers["X-TokenBudget-Limit"] = str(e.daily_limit)
         return response
 
     except APIError as e:

@@ -1,10 +1,37 @@
 """Discovery profile business logic service."""
 
+import json
+import logging
+from hashlib import sha256
 from typing import Any
 from uuid import UUID
 
 from src.core.supabase import get_supabase_client
 from src.schemas.discovery import DiscoveryProfileUpdate
+
+logger = logging.getLogger(__name__)
+
+
+def compute_answers_hash(answers: dict[str, Any]) -> str:
+    """Compute a deterministic hash of discovery answers.
+
+    Args:
+        answers: Discovery answers dictionary.
+
+    Returns:
+        16-character hex hash string.
+    """
+    # Extract just the values for consistent hashing
+    simplified = {}
+    for k, v in sorted(answers.items()):
+        if isinstance(v, dict):
+            simplified[k] = v.get("value", "")
+        else:
+            simplified[k] = str(v) if v else ""
+
+    # Create deterministic JSON string
+    json_str = json.dumps(simplified, sort_keys=True)
+    return sha256(json_str.encode()).hexdigest()[:16]
 
 
 class DiscoveryProfileService:
@@ -60,6 +87,7 @@ class DiscoveryProfileService:
         Returns:
             dict | None: The discovery profile data or None if not found.
         """
+        logger.debug("Looking up discovery_profile for profile_id=%s", profile_id)
         response = (
             self.client.table("discovery_profiles")
             .select("*")
@@ -68,7 +96,17 @@ class DiscoveryProfileService:
             .execute()
         )
 
-        return response.data if response and response.data else None
+        if response and response.data:
+            answers = response.data.get("answers", {})
+            logger.debug(
+                "Found discovery_profile id=%s with %d answers",
+                response.data.get("id"),
+                len(answers) if answers else 0,
+            )
+            return response.data
+        else:
+            logger.warning("No discovery_profile found for profile_id=%s", profile_id)
+            return None
 
     async def update(
         self,
@@ -175,3 +213,86 @@ class DiscoveryProfileService:
             )
 
         return response.data[0]
+
+    async def get_cached_recommendations(
+        self,
+        profile_id: UUID,
+        current_answers: dict[str, Any],
+    ) -> dict[str, Any] | None:
+        """Get cached recommendations if the answers hash matches.
+
+        Args:
+            profile_id: The user's profile UUID.
+            current_answers: Current discovery answers to validate cache.
+
+        Returns:
+            Cached recommendations dict or None if cache is invalid.
+        """
+        profile = await self.get_by_profile_id(profile_id)
+        if not profile:
+            return None
+
+        stored_hash = profile.get("answers_hash")
+        cached = profile.get("cached_recommendations")
+
+        if not stored_hash or not cached:
+            logger.debug("No cached recommendations for profile %s", profile_id)
+            return None
+
+        # Compute hash of current answers
+        current_hash = compute_answers_hash(current_answers)
+
+        if stored_hash != current_hash:
+            logger.debug(
+                "Cached recommendations stale for profile %s (hash mismatch: %s vs %s)",
+                profile_id, stored_hash, current_hash
+            )
+            return None
+
+        logger.info("Returning cached recommendations for profile %s", profile_id)
+        return cached
+
+    async def set_cached_recommendations(
+        self,
+        profile_id: UUID,
+        answers: dict[str, Any],
+        recommendations: dict[str, Any],
+    ) -> None:
+        """Store cached recommendations with answers hash.
+
+        Args:
+            profile_id: The user's profile UUID.
+            answers: Current discovery answers (used for hash).
+            recommendations: Recommendations response to cache.
+        """
+        answers_hash = compute_answers_hash(answers)
+
+        try:
+            self.client.table("discovery_profiles").update({
+                "answers_hash": answers_hash,
+                "cached_recommendations": recommendations,
+            }).eq("profile_id", str(profile_id)).execute()
+
+            logger.info(
+                "Cached recommendations for profile %s (hash: %s)",
+                profile_id, answers_hash
+            )
+        except Exception as e:
+            # Don't fail the request if caching fails
+            logger.error("Failed to cache recommendations: %s", e)
+
+    async def invalidate_recommendations_cache(self, profile_id: UUID) -> None:
+        """Invalidate cached recommendations when answers change.
+
+        Args:
+            profile_id: The user's profile UUID.
+        """
+        try:
+            self.client.table("discovery_profiles").update({
+                "answers_hash": None,
+                "cached_recommendations": None,
+            }).eq("profile_id", str(profile_id)).execute()
+
+            logger.debug("Invalidated recommendations cache for profile %s", profile_id)
+        except Exception as e:
+            logger.error("Failed to invalidate cache: %s", e)

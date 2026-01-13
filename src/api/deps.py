@@ -22,7 +22,10 @@ def get_session_cookie_config() -> dict:
         "max_age": settings.session_cookie_max_age,
         "httponly": True,
         "secure": settings.session_cookie_secure,
-        "samesite": "lax",
+        # SameSite=None required for cross-origin requests (frontend on different domain)
+        # This allows the cookie to be sent on cross-origin POST requests
+        # Requires Secure=True which is set in production
+        "samesite": "none",
         "path": "/",
     }
 
@@ -317,33 +320,46 @@ RequiredDualAuth = Annotated[AuthContext, Depends(get_required_user_or_session)]
 
 
 async def check_session_rate_limit(auth: DualAuth) -> None:
-    """Check rate limit for anonymous session users.
+    """Check rate limit for all users (tiered limits).
 
-    This dependency should be used on endpoints that need rate limiting
-    for anonymous users. Authenticated users bypass rate limiting.
+    This dependency applies rate limiting to both anonymous and authenticated users.
+    Authenticated users have higher limits than anonymous sessions.
 
     Args:
         auth: The auth context from DualAuth.
 
     Raises:
-        RateLimitError: If the session has exceeded the rate limit.
+        RateLimitError: If the user/session has exceeded the rate limit.
     """
-    # Skip rate limiting for authenticated users
-    if auth.is_authenticated:
-        return
+    settings = get_settings()
+    limiter = get_rate_limiter()
 
-    # Rate limit anonymous sessions
-    if auth.session and auth.session.session_id:
-        limiter = get_rate_limiter()
+    if auth.is_authenticated and auth.user:
+        # Authenticated users: higher rate limit, keyed by user_id
+        key = f"user:{auth.user.user_id}"
+        max_requests = settings.rate_limit_authenticated_requests
+    elif auth.session and auth.session.session_id:
+        # Anonymous sessions: lower rate limit, keyed by session_id
         key = f"session:{auth.session.session_id}"
+        max_requests = settings.rate_limit_anonymous_requests
+    else:
+        # No valid auth context - should not happen, but deny by default
+        raise RateLimitError(
+            message="Authentication required for rate limiting.",
+            retry_after=60,
+        )
 
-        allowed, remaining, retry_after = await limiter.check_and_increment(key)
+    allowed, remaining, retry_after = await limiter.check_and_increment(
+        key,
+        max_requests=max_requests,
+        window_seconds=settings.rate_limit_window_seconds,
+    )
 
-        if not allowed:
-            raise RateLimitError(
-                message="Rate limit exceeded. Please wait before sending more messages.",
-                retry_after=retry_after,
-            )
+    if not allowed:
+        raise RateLimitError(
+            message="Rate limit exceeded. Please wait before sending more messages.",
+            retry_after=retry_after,
+        )
 
 
 # Type alias for rate limit dependency

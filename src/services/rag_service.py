@@ -243,6 +243,55 @@ class RAGService:
             logger.error(f"Failed to search robots: {e}")
             raise
 
+    async def search_robots_for_discovery(
+        self,
+        discovery_context: str,
+        top_k: int = 10,
+    ) -> list[dict[str, Any]]:
+        """Search for robots using natural language discovery context.
+
+        This method is optimized for recommendation scoring by returning
+        robots that semantically match the customer's needs description.
+
+        Args:
+            discovery_context: Natural language summary of customer needs.
+            top_k: Maximum candidates to return.
+
+        Returns:
+            List of dicts with robot_id, semantic_score, and metadata.
+        """
+        try:
+            # Generate embedding from discovery context
+            query_embedding = await self.generate_embedding(discovery_context)
+
+            # Query Pinecone
+            index = get_pinecone_index()
+            results = index.query(
+                vector=query_embedding,
+                top_k=top_k,
+                include_metadata=True,
+            )
+
+            # Format results with semantic scores
+            search_results = []
+            for match in results.matches:
+                search_results.append({
+                    "robot_id": match.metadata.get("robot_id") if match.metadata else None,
+                    "semantic_score": match.score,
+                    "metadata": match.metadata,
+                })
+
+            logger.info(
+                "Discovery search returned %d candidates (top score: %.3f)",
+                len(search_results),
+                search_results[0]["semantic_score"] if search_results else 0,
+            )
+            return search_results
+
+        except Exception as e:
+            logger.error("Failed to search robots for discovery: %s", str(e))
+            return []
+
     async def get_relevant_robots_for_context(
         self,
         query: str,

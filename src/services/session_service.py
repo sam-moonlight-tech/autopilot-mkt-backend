@@ -288,6 +288,9 @@ class SessionService:
     ) -> dict[str, Any]:
         """Create or update a discovery profile from session data.
 
+        Uses smart merge logic: only updates fields that are empty/default in the
+        existing profile, preserving any existing progress.
+
         Args:
             profile_id: The profile UUID.
             session: The session data to copy.
@@ -303,34 +306,79 @@ class SessionService:
             .execute()
         )
 
-        profile_data = {
-            "current_question_index": session.get("current_question_index", 0),
-            "phase": session.get("phase", "discovery"),
-            "answers": session.get("answers", {}),
-            "roi_inputs": session.get("roi_inputs"),
-            "selected_product_ids": session.get("selected_product_ids", []),
-            "timeframe": session.get("timeframe"),
-            "greenlight": session.get("greenlight"),
-        }
-
         if existing.data:
-            # Update existing profile
-            response = (
-                self.client.table("discovery_profiles")
-                .update(profile_data)
-                .eq("profile_id", str(profile_id))
-                .execute()
-            )
+            # Smart merge: only update empty/default fields, preserve existing progress
+            existing_profile = existing.data[0]
+            merged_data = {}
+
+            # current_question_index: keep higher value (more progress)
+            session_index = session.get("current_question_index", 0)
+            existing_index = existing_profile.get("current_question_index", 0)
+            if session_index > existing_index:
+                merged_data["current_question_index"] = session_index
+
+            # phase: only update if existing is at default "discovery" and session progressed
+            existing_phase = existing_profile.get("phase", "discovery")
+            session_phase = session.get("phase", "discovery")
+            if existing_phase == "discovery" and session_phase in ["roi", "greenlight"]:
+                merged_data["phase"] = session_phase
+
+            # answers: merge dicts, only add new keys (don't overwrite existing answers)
+            existing_answers = existing_profile.get("answers", {}) or {}
+            session_answers = session.get("answers", {}) or {}
+            if session_answers:
+                new_answers = {k: v for k, v in session_answers.items() if k not in existing_answers}
+                if new_answers:
+                    merged_data["answers"] = {**existing_answers, **new_answers}
+
+            # roi_inputs: only update if existing is None/empty
+            if not existing_profile.get("roi_inputs") and session.get("roi_inputs"):
+                merged_data["roi_inputs"] = session["roi_inputs"]
+
+            # selected_product_ids: only update if existing is empty
+            existing_products = existing_profile.get("selected_product_ids", []) or []
+            session_products = session.get("selected_product_ids", []) or []
+            if not existing_products and session_products:
+                merged_data["selected_product_ids"] = session_products
+
+            # timeframe: only update if existing is None
+            if not existing_profile.get("timeframe") and session.get("timeframe"):
+                merged_data["timeframe"] = session["timeframe"]
+
+            # greenlight: only update if existing is None/empty
+            if not existing_profile.get("greenlight") and session.get("greenlight"):
+                merged_data["greenlight"] = session["greenlight"]
+
+            # Only update if there's something to merge
+            if merged_data:
+                response = (
+                    self.client.table("discovery_profiles")
+                    .update(merged_data)
+                    .eq("profile_id", str(profile_id))
+                    .execute()
+                )
+                return response.data[0]
+            else:
+                # Nothing to merge, return existing profile as-is
+                return existing_profile
         else:
-            # Create new profile
-            profile_data["profile_id"] = str(profile_id)
+            # Create new profile with session data
+            profile_data = {
+                "profile_id": str(profile_id),
+                "current_question_index": session.get("current_question_index", 0),
+                "phase": session.get("phase", "discovery"),
+                "answers": session.get("answers", {}),
+                "roi_inputs": session.get("roi_inputs"),
+                "selected_product_ids": session.get("selected_product_ids", []),
+                "timeframe": session.get("timeframe"),
+                "greenlight": session.get("greenlight"),
+            }
             response = (
                 self.client.table("discovery_profiles")
                 .insert(profile_data)
                 .execute()
             )
-
-        return response.data[0]
+            return response.data[0]
 
     async def _transfer_conversation_ownership(
         self,

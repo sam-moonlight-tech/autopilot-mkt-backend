@@ -27,16 +27,16 @@ service_role key: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9... (role: "service_role")
 
 ## The New Architecture (`sb_secret_` Keys)
 
-```
+```bash
 publishable key: sb_publishable_... (replaces anon)
 secret key:      sb_secret_...      (replaces service_role)
 ```
 
-Reference: https://github.com/orgs/supabase/discussions/29260
+Reference: <https://github.com/orgs/supabase/discussions/29260>
 
 ### How it works now
 
-```
+```bash
 ┌─────────────┐     ┌──────────────┐     ┌──────────────┐     ┌────────────┐
 │   Backend   │────▶│  Kong/Edge   │────▶│  PostgREST   │────▶│ PostgreSQL │
 │   (Python)  │     │   Gateway    │     │              │     │            │

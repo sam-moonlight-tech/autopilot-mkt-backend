@@ -4,8 +4,9 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from src.core.config import get_settings
 from src.models.message import MessageRole
 
 
@@ -14,8 +15,18 @@ class MessageCreate(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-    content: str = Field(..., min_length=1, max_length=10000, description="Message content")
+    content: str = Field(..., min_length=1, description="Message content")
     metadata: dict[str, Any] | None = Field(default=None, description="Additional metadata")
+
+    @field_validator("content")
+    @classmethod
+    def validate_content_length(cls, v: str) -> str:
+        """Validate message content length against configurable limit."""
+        settings = get_settings()
+        max_length = settings.max_message_length
+        if len(v) > max_length:
+            raise ValueError(f"Message content exceeds maximum length of {max_length} characters")
+        return v
 
 
 class MessageResponse(BaseModel):

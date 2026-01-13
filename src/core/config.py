@@ -32,7 +32,7 @@ class Settings(BaseSettings):
 
     # CORS
     cors_origins: str = Field(
-        default="http://localhost:3000,http://localhost:5173,https://autopilot-marketplace-discovery-to.vercel.app",
+        default="http://localhost:3000,http://localhost:5173,https://autopilot-marketplace-discovery-to.vercel.app,https://autopilot-marketplace-lfvsmsod4-sachins-projects-5aeecb17.vercel.app,https://autopilot-marketplace-one.vercel.app",
         description="Comma-separated list of allowed CORS origins",
     )
 
@@ -64,6 +64,27 @@ class Settings(BaseSettings):
     session_cookie_max_age: int = Field(default=2592000, description="Session cookie max age in seconds (30 days)")
     session_cookie_secure: bool = Field(default=True, description="Use secure cookies (HTTPS only)")
     session_expiry_days: int = Field(default=30, description="Days until session expires")
+
+    # Rate Limiting
+    rate_limit_anonymous_requests: int = Field(default=15, description="Max requests per window for anonymous users")
+    rate_limit_authenticated_requests: int = Field(default=100, description="Max requests per window for authenticated users")
+    rate_limit_window_seconds: int = Field(default=60, description="Rate limit window in seconds")
+
+    # Token Budgets (OpenAI usage limits)
+    # Note: Each message exchange uses ~2,500-3,500 tokens (discovery response + extraction)
+    # Generous limits to avoid interrupting user flow during discovery/ROI exploration
+    token_budget_anonymous_daily: int = Field(default=75000, description="Max tokens per day for anonymous sessions")
+    token_budget_authenticated_daily: int = Field(default=250000, description="Max tokens per day for authenticated users")
+
+    # Request Size Limits
+    max_request_body_size: int = Field(default=65536, description="Max request body size in bytes (64KB)")
+    max_message_length: int = Field(default=4000, description="Max message content length in characters")
+
+    # LLM Recommendations
+    use_llm_recommendations: bool = Field(default=True, description="Use LLM for intelligent recommendations (fallback to manual if False)")
+    recommendation_cache_ttl: int = Field(default=3600, description="TTL for recommendation cache in seconds (1 hour)")
+    recommendation_cache_size: int = Field(default=500, description="Maximum cached recommendation entries")
+    llm_scoring_max_candidates: int = Field(default=8, description="Max robots to send to LLM for scoring (after RAG pre-filter)")
 
     # Stripe
     stripe_secret_key: str = Field(default="", description="Stripe secret API key")

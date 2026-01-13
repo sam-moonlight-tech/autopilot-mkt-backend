@@ -97,7 +97,7 @@ else
       
       # Add to env vars if it's one of our required variables
       case "$key" in
-        SUPABASE_URL|SUPABASE_SECRET_KEY|SUPABASE_SIGNING_KEY_JWK|OPENAI_API_KEY|PINECONE_API_KEY|PINECONE_ENVIRONMENT|OPENAI_MODEL|PINECONE_INDEX_NAME|EMBEDDING_MODEL|MAX_CONTEXT_MESSAGES|CORS_ORIGINS|AUTH_REDIRECT_URL)
+        SUPABASE_URL|SUPABASE_SECRET_KEY|SUPABASE_SIGNING_KEY_JWK|OPENAI_API_KEY|PINECONE_API_KEY|PINECONE_ENVIRONMENT|OPENAI_MODEL|PINECONE_INDEX_NAME|EMBEDDING_MODEL|MAX_CONTEXT_MESSAGES|CORS_ORIGINS|AUTH_REDIRECT_URL|STRIPE_SECRET_KEY|STRIPE_WEBHOOK_SECRET|STRIPE_PUBLISHABLE_KEY)
           ENV_VARS="${ENV_VARS},${key}=${value}"
           ;;
       esac
@@ -129,7 +129,7 @@ DEPLOY_CMD="gcloud run deploy ${SERVICE_NAME} \
 
 # Add secrets if using Secret Manager
 if [ "${USE_SECRETS}" = "true" ]; then
-  DEPLOY_CMD="${DEPLOY_CMD} --update-secrets=SUPABASE_URL=supabase-url:latest,SUPABASE_SECRET_KEY=supabase-secret-key:latest,SUPABASE_SIGNING_KEY_JWK=supabase-signing-key-jwk:latest,OPENAI_API_KEY=openai-api-key:latest,PINECONE_API_KEY=pinecone-api-key:latest,PINECONE_ENVIRONMENT=pinecone-environment:latest"
+  DEPLOY_CMD="${DEPLOY_CMD} --update-secrets=SUPABASE_URL=supabase-url:latest,SUPABASE_SECRET_KEY=supabase-secret-key:latest,SUPABASE_SIGNING_KEY_JWK=supabase-signing-key-jwk:latest,OPENAI_API_KEY=openai-api-key:latest,PINECONE_API_KEY=pinecone-api-key:latest,PINECONE_ENVIRONMENT=pinecone-environment:latest,STRIPE_SECRET_KEY=stripe-secret-key:latest,STRIPE_WEBHOOK_SECRET=stripe-webhook-secret:latest,STRIPE_PUBLISHABLE_KEY=stripe-publishable-key:latest"
 fi
 
 # Deploy to Cloud Run

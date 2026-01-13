@@ -4,9 +4,10 @@
 
 **Important:** Supabase has deprecated JWT-based service role keys. Always use the `SUPABASE_SECRET_KEY` format (`sb_secret_...`) now.
 
-Reference: https://github.com/orgs/supabase/discussions/29260
+Reference: <https://github.com/orgs/supabase/discussions/29260>
 
 ### Configuration
+
 ```bash
 # .env
 SUPABASE_SECRET_KEY=sb_secret_...  # New format - use this
@@ -33,6 +34,7 @@ The secret key format `sb_secret_...` replaces the old JWT-based service role ke
 ## Database Migrations
 
 Migrations are located in `supabase/migrations/` and follow sequential numbering:
+
 - `001_create_profiles.sql` - User profiles linked to auth.users
 - `002_create_companies.sql` - Companies, members, invitations (with non-recursive RLS)
 - `003_create_conversations.sql` - Conversations and messages
@@ -42,6 +44,7 @@ Migrations are located in `supabase/migrations/` and follow sequential numbering
 - `007_create_orders.sql` - Checkout orders
 
 ### RLS Policy Guidelines
+
 - Avoid self-referencing policies on `company_members` to prevent infinite recursion
 - Use `profiles` table for user identity checks (via `auth.uid()`)
 - The `sb_secret_` key bypasses RLS at PostgREST level - no special RLS policies needed for backend access
@@ -49,6 +52,7 @@ Migrations are located in `supabase/migrations/` and follow sequential numbering
 ## Stripe Integration
 
 The robot catalog supports both test and production Stripe environments:
+
 - `stripe_product_id` / `stripe_lease_price_id` - Production
 - `stripe_product_id_test` / `stripe_lease_price_id_test` - Test
 

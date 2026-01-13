@@ -184,7 +184,7 @@ async def get_recommendations_from_session(
     "/recommendations/discovery",
     response_model=RecommendationsResponse,
     summary="Get recommendations using discovery profile data",
-    description="Returns robot recommendations using the authenticated user's discovery profile answers.",
+    description="Returns robot recommendations using the authenticated user's discovery profile answers. Results are cached and consistent until answers change.",
 )
 async def get_recommendations_from_discovery(
     user: CurrentUser,
@@ -193,8 +193,8 @@ async def get_recommendations_from_discovery(
     """Get recommendations using current discovery profile data.
 
     Authenticated-user endpoint that uses the discovery profile's stored answers
-    to generate recommendations without requiring the caller
-    to pass answers explicitly.
+    to generate recommendations. Results are cached in the database and will
+    be consistent across page reloads until the discovery answers change.
 
     Args:
         user: Authenticated user context.
@@ -231,6 +231,17 @@ async def get_recommendations_from_discovery(
             detail="No discovery answers in profile. Complete discovery first.",
         )
 
+    # Check for cached recommendations first
+    cached = await discovery_service.get_cached_recommendations(profile_id, answers)
+    if cached:
+        logger.info("Returning cached recommendations for user %s", user.user_id)
+        # Convert cached dict back to RecommendationsResponse
+        try:
+            return RecommendationsResponse(**cached)
+        except Exception as e:
+            logger.warning("Failed to parse cached recommendations, regenerating: %s", e)
+            # Fall through to regenerate if cache is corrupted
+
     # Build request from discovery profile data
     try:
         request = RecommendationsRequest(
@@ -248,6 +259,17 @@ async def get_recommendations_from_discovery(
     roi_service = get_roi_service()
     try:
         result = await roi_service.get_recommendations(request)
+
+        # Cache the result for future requests
+        try:
+            await discovery_service.set_cached_recommendations(
+                profile_id,
+                answers,
+                result.model_dump(mode="json"),
+            )
+        except Exception as cache_error:
+            logger.warning("Failed to cache recommendations: %s", cache_error)
+
         return result
     except Exception as e:
         logger.error(f"Error getting recommendations: {e}", exc_info=True)

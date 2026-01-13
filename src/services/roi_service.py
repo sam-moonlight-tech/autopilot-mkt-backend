@@ -1,9 +1,14 @@
 """ROI calculation and robot recommendation service."""
 
+from __future__ import annotations
+
 import logging
 from datetime import datetime
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 from uuid import UUID
+
+if TYPE_CHECKING:
+    pass
 
 from src.models.session import DiscoveryAnswer
 from src.schemas.roi import (
@@ -22,7 +27,8 @@ from src.services.robot_catalog_service import RobotCatalogService
 logger = logging.getLogger(__name__)
 
 # Algorithm version for tracking
-ALGORITHM_VERSION = "1.0.0"
+ALGORITHM_VERSION_MANUAL = "1.0.0"
+ALGORITHM_VERSION_LLM = "2.0.0"
 
 # Spend mapping from discovery answer values to numeric amounts
 SPEND_MAP: dict[str, float] = {
@@ -210,7 +216,7 @@ class ROIService:
             roi_percent=round(roi_percent, 1),
             payback_months=round(payback_months, 1) if payback_months else None,
             confidence=confidence,
-            algorithm_version=ALGORITHM_VERSION,
+            algorithm_version=ALGORITHM_VERSION_MANUAL,
             factors_considered=factors_considered,
         )
 
@@ -262,12 +268,15 @@ class ROIService:
             calculated_at=datetime.utcnow(),
         )
 
-    def _score_robot(
+    def _score_robot_manual(
         self,
         robot: dict[str, Any],
         answers: dict[str, DiscoveryAnswer],
     ) -> tuple[float, list[RecommendationReason]]:
-        """Score a robot based on how well it matches the user's needs.
+        """Score a robot based on how well it matches the user's needs (manual algorithm).
+
+        This is the original manual scoring algorithm used as a fallback
+        when LLM-powered scoring is unavailable.
 
         Args:
             robot: Robot data from catalog.
@@ -490,8 +499,59 @@ class ROIService:
     async def get_recommendations(
         self,
         request: RecommendationsRequest,
+        session_id: UUID | None = None,
+        profile_id: UUID | None = None,
+        use_llm: bool | None = None,
     ) -> RecommendationsResponse:
         """Get ranked robot recommendations based on discovery answers.
+
+        Uses LLM-powered intelligent recommendations by default, with
+        automatic fallback to manual scoring if LLM is unavailable.
+
+        Args:
+            request: Recommendations request with answers and preferences.
+            session_id: Optional session ID for token budget tracking.
+            profile_id: Optional profile ID for token budget tracking.
+            use_llm: Override for LLM usage (None = use settings default).
+
+        Returns:
+            RecommendationsResponse with ranked recommendations.
+        """
+        from src.core.config import get_settings
+        from src.core.token_budget import TokenBudgetError
+
+        settings = get_settings()
+
+        # Determine whether to use LLM
+        should_use_llm = use_llm if use_llm is not None else settings.use_llm_recommendations
+
+        if should_use_llm:
+            try:
+                from src.services.recommendation_service import get_recommendation_service
+
+                recommendation_service = get_recommendation_service()
+                return await recommendation_service.get_intelligent_recommendations(
+                    request=request,
+                    session_id=session_id,
+                    profile_id=profile_id,
+                    use_cache=True,
+                )
+            except TokenBudgetError:
+                logger.warning("Token budget exceeded, falling back to manual recommendations")
+            except Exception as e:
+                logger.error("LLM recommendations failed, falling back to manual: %s", str(e))
+
+        # Fallback to manual scoring
+        return await self.get_recommendations_manual(request)
+
+    async def get_recommendations_manual(
+        self,
+        request: RecommendationsRequest,
+    ) -> RecommendationsResponse:
+        """Get ranked robot recommendations using manual scoring algorithm.
+
+        This is the original recommendation algorithm, now used as a fallback
+        when LLM-powered scoring is unavailable or disabled.
 
         Args:
             request: Recommendations request with answers and preferences.
@@ -522,7 +582,7 @@ class ROIService:
         scored_robots: list[tuple[dict[str, Any], float, list[RecommendationReason]]] = []
 
         for robot in cleaning_robots:
-            score, reasons = self._score_robot(robot, request.answers)
+            score, reasons = self._score_robot_manual(robot, request.answers)
             scored_robots.append((robot, score, reasons))
 
         # Sort by score descending
@@ -622,7 +682,7 @@ class ROIService:
             recommendations=recommendations,
             other_options=other_options,
             total_robots_evaluated=len(cleaning_robots),
-            algorithm_version=ALGORITHM_VERSION,
+            algorithm_version=ALGORITHM_VERSION_MANUAL,
             generated_at=datetime.utcnow(),
         )
 

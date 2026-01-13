@@ -20,9 +20,21 @@ logger = logging.getLogger(__name__)
 class RateLimitConfig:
     """Configuration for rate limiting."""
 
-    max_requests: int = 15  # Maximum requests allowed
+    max_requests_anonymous: int = 15  # Maximum requests for anonymous users
+    max_requests_authenticated: int = 100  # Maximum requests for authenticated users
     window_seconds: int = 60  # Time window in seconds
     cleanup_interval_seconds: int = 300  # Cleanup expired entries every 5 minutes
+
+    @classmethod
+    def from_settings(cls) -> "RateLimitConfig":
+        """Create config from application settings."""
+        from src.core.config import get_settings
+        settings = get_settings()
+        return cls(
+            max_requests_anonymous=settings.rate_limit_anonymous_requests,
+            max_requests_authenticated=settings.rate_limit_authenticated_requests,
+            window_seconds=settings.rate_limit_window_seconds,
+        )
 
 
 @dataclass
@@ -149,7 +161,8 @@ class InMemoryRateLimitStorage:
             return {
                 "active_sessions": len(self._storage),
                 "config": {
-                    "max_requests": self.config.max_requests,
+                    "max_requests_anonymous": self.config.max_requests_anonymous,
+                    "max_requests_authenticated": self.config.max_requests_authenticated,
                     "window_seconds": self.config.window_seconds,
                 },
             }

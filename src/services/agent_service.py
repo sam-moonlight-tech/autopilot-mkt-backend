@@ -9,6 +9,7 @@ from openai import OpenAIError
 
 from src.core.config import get_settings
 from src.core.openai import get_openai_client
+from src.core.token_budget import TokenBudgetError, get_token_budget
 from src.models.conversation import ConversationPhase
 from src.models.message import MessageRole
 from src.schemas.message import MessageResponse
@@ -314,6 +315,8 @@ class AgentService:
         conversation_id: UUID,
         user_message: str,
         metadata: dict[str, Any] | None = None,
+        session_id: UUID | None = None,
+        profile_id: UUID | None = None,
     ) -> tuple[MessageResponse, MessageResponse]:
         """Generate an agent response to a user message.
 
@@ -323,11 +326,14 @@ class AgentService:
             conversation_id: The conversation's UUID.
             user_message: The user's message content.
             metadata: Optional metadata for the user message.
+            session_id: Optional session ID for token budget tracking (anonymous).
+            profile_id: Optional profile ID for token budget tracking (authenticated).
 
         Returns:
             tuple: (user_message_response, agent_message_response)
 
         Raises:
+            TokenBudgetError: If daily token budget is exceeded.
             Exception: If OpenAI API call fails.
         """
         # Get conversation to determine phase
@@ -357,11 +363,35 @@ class AgentService:
         # Build context including the new user message and RAG context
         context = await self.build_context(conversation_id, phase, user_message)
 
+        # Determine budget key and check token budget
+        budget_key: str | None = None
+        is_authenticated = False
+        if profile_id:
+            budget_key = f"user:{profile_id}"
+            is_authenticated = True
+        elif session_id:
+            budget_key = f"session:{session_id}"
+
         # Check if mock mode is enabled
         if self.settings.mock_openai:
             logger.info("Mock mode enabled - returning mock response")
             agent_content = self._get_mock_response(phase, user_message)
         else:
+            # Check token budget before making API call
+            if budget_key:
+                token_budget = get_token_budget()
+                # Estimate tokens: rough estimate of input + max output
+                estimated_tokens = len(user_message) // 4 + 1000  # ~4 chars per token
+                allowed, remaining, limit = await token_budget.check_budget(
+                    budget_key, estimated_tokens, is_authenticated
+                )
+                if not allowed:
+                    raise TokenBudgetError(
+                        message="Daily token budget exceeded. Please try again tomorrow.",
+                        tokens_used=limit - remaining,
+                        daily_limit=limit,
+                    )
+
             try:
                 # Call OpenAI API
                 response = self.client.chat.completions.create(
@@ -372,6 +402,16 @@ class AgentService:
                 )
 
                 agent_content = response.choices[0].message.content or ""
+
+                # Track actual token usage
+                if budget_key and response.usage:
+                    total_tokens = response.usage.total_tokens
+                    await token_budget.record_usage(budget_key, total_tokens)
+                    logger.debug(
+                        "Token usage recorded: %d tokens for %s",
+                        total_tokens,
+                        budget_key,
+                    )
 
             except OpenAIError as e:
                 logger.error("OpenAI API error: %s", str(e))
@@ -399,21 +439,59 @@ class AgentService:
 
         return user_msg_response, agent_msg_response
 
+    def _format_recommendations_context(
+        self,
+        recommendations: Any,
+    ) -> str:
+        """Format current recommendations for agent context.
+
+        Args:
+            recommendations: RecommendationsResponse or None.
+
+        Returns:
+            str: Formatted recommendations context for prompt.
+        """
+        if not recommendations or not hasattr(recommendations, 'recommendations'):
+            return ""
+
+        recs = recommendations.recommendations
+        if not recs:
+            return ""
+
+        lines = ["\nCURRENT ROBOT RECOMMENDATIONS FOR THIS CUSTOMER:"]
+        for rec in recs[:3]:  # Top 3 recommendations
+            lines.append(
+                f"- #{rec.rank} {rec.robot_name} (Score: {rec.match_score}/100, Label: {rec.label})"
+            )
+            lines.append(f"  Why: {rec.summary}")
+            for reason in rec.reasons[:2]:  # Top 2 reasons
+                lines.append(f"  • {reason.factor}: {reason.explanation}")
+
+        lines.append("")
+        lines.append("When the user asks about recommendations, reference this analysis.")
+        lines.append("Explain the scoring factors and why specific robots match their needs.")
+
+        return "\n".join(lines)
+
     def _build_discovery_prompt(
         self,
         current_answers: dict[str, Any],
         missing_questions: list[dict[str, Any]],
         robot_catalog: list[dict[str, Any]],
+        current_recommendations: Any = None,
+        current_user_message: str | None = None,
     ) -> str:
         """Build an intelligent discovery system prompt.
 
         The prompt tells the agent what's already known, what still needs
-        to be gathered, and what robots are available in the catalog.
+        to be gathered, what robots are available, and current recommendations.
 
         Args:
             current_answers: Dict of already answered questions.
             missing_questions: List of required questions not yet answered.
             robot_catalog: List of available robots in the catalog.
+            current_recommendations: Optional RecommendationsResponse with current recs.
+            current_user_message: The user's current message (to recognize inline answers).
 
         Returns:
             str: The system prompt for discovery.
@@ -450,30 +528,485 @@ class AgentService:
         else:
             catalog_summary = "No robots available in catalog."
 
+        # Format recommendations if available
+        recommendations_context = self._format_recommendations_context(current_recommendations)
+
+        # Include current message for inline answer recognition
+        current_message_context = ""
+        if current_user_message:
+            current_message_context = f"""
+USER'S CURRENT MESSAGE (analyze for answers to missing questions):
+"{current_user_message}"
+
+CRITICAL: Before asking ANY question, check if the user's current message above ALREADY contains the answer.
+For example, if user says "We're Pickleball One, a pickleball club" - they've answered BOTH company_name AND company_type.
+Do NOT ask about information the user just provided. Acknowledge what they shared and move to the NEXT missing topic.
+"""
+
         return f"""You are Autopilot, a premium robotics procurement consultant.
 
 AVAILABLE ROBOT CATALOG (ONLY recommend from this list):
 {catalog_summary}
 
-WHAT YOU KNOW ABOUT THIS CUSTOMER:
+WHAT YOU KNOW ABOUT THIS CUSTOMER (from previous messages):
 {answered_summary}
-
+{current_message_context}
 STILL NEED TO LEARN ({remaining_count} remaining):
 {missing_summary}
-
+{recommendations_context}
 INSTRUCTIONS:
-1. Acknowledge what the user just said naturally and warmly
-2. If there are missing questions, weave ONE into your response conversationally
-3. If the user's message ALREADY contains info about missing topics, acknowledge it - don't re-ask
+1. FIRST, extract any new information from the user's current message - acknowledge what they shared
+2. If there are STILL missing questions after considering the current message, weave ONE into your response
+3. NEVER ask about something the user just told you in this message - move to the next unknown topic
 4. Set ready_for_roi=true ONLY when you have answers for most required questions (4+ of 6)
 5. Return chips matching the question you're asking, or empty array for open-ended questions
 6. When discussing specific robots, ONLY mention robots from the AVAILABLE ROBOT CATALOG above
 7. NEVER make up or hallucinate robot models - if asked about specific models, only reference the catalog
+8. If recommendations are available, reference them when discussing robot options
 
 TONE: Premium, consultative, efficient. Like a senior consultant who values the client's time.
 Don't be robotic or interrogative. If user gives rich context, adapt and skip redundant questions.
 
 IMPORTANT: Your response must be valid JSON with content (string), chips (array), and ready_for_roi (boolean)."""
+
+    async def generate_initial_greeting(
+        self,
+        conversation_id: UUID,
+        session_id: UUID | None = None,
+        profile_id: UUID | None = None,
+        source_context: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Generate a dynamic initial greeting for a new conversation.
+
+        This method generates a contextual greeting based on what we know about
+        the user (discovery profile, company, referral source, etc.).
+
+        Args:
+            conversation_id: The conversation's UUID.
+            session_id: Optional session ID for anonymous users.
+            profile_id: Optional profile ID for authenticated users.
+            source_context: Optional context about how user arrived (email, referral, etc.)
+
+        Returns:
+            dict: {
+                "content": str,  # The greeting message
+                "chips": list[str],  # Quick reply options
+                "message": MessageResponse,  # The saved message
+            }
+        """
+        # Gather context about what we know
+        current_answers: dict[str, Any] = {}
+        company_name: str | None = None
+        discovery_service = None
+
+        if profile_id:
+            from src.services.discovery_profile_service import DiscoveryProfileService
+            from src.services.company_service import CompanyService
+
+            discovery_service = DiscoveryProfileService()
+            discovery_profile = await discovery_service.get_by_profile_id(profile_id)
+            if discovery_profile:
+                current_answers = discovery_profile.get("answers", {})
+
+            # Check for company
+            company_service = CompanyService()
+            company = await company_service.get_user_company(profile_id)
+            if company and company.get("name"):
+                company_name = company["name"]
+                if "company_name" not in current_answers:
+                    current_answers["company_name"] = {
+                        "questionId": 0,
+                        "value": company_name,
+                        "label": "Company Name",
+                        "key": "company_name",
+                        "group": "Company",
+                    }
+        elif session_id:
+            session = await self.session_service.get_session_by_id(session_id)
+            if session:
+                current_answers = session.get("answers", {})
+                if "company_name" in current_answers:
+                    company_name = current_answers["company_name"].get("value")
+
+        # Determine what's missing
+        answered_keys = set(current_answers.keys())
+        missing_questions = [
+            q for q in REQUIRED_QUESTIONS
+            if q["key"] not in answered_keys
+        ]
+
+        # Build the greeting prompt
+        greeting_prompt = self._build_initial_greeting_prompt(
+            current_answers=current_answers,
+            company_name=company_name,
+            missing_questions=missing_questions,
+            source_context=source_context,
+        )
+
+        # Generate greeting
+        if self.settings.mock_openai:
+            if company_name:
+                content = f"Welcome back! I see you're with {company_name}. I'm Autopilot, your robotics procurement consultant. Let's continue building your automation profile."
+                chips = []
+            else:
+                content = "Hello! I'm Autopilot, your robotics procurement consultant. I'll help you discover the right cleaning automation for your facility. What is the name of your company?"
+                chips = ["Enter company name"]
+            result = {"content": content, "chips": chips, "ready_for_roi": False}
+        else:
+            try:
+                response = self.client.chat.completions.create(
+                    model=self.settings.openai_model,
+                    messages=[
+                        {"role": "system", "content": greeting_prompt},
+                        {"role": "user", "content": "Generate initial greeting"},
+                    ],
+                    response_format=DISCOVERY_RESPONSE_SCHEMA,
+                    max_completion_tokens=300,
+                    temperature=0.7,
+                )
+                result = json.loads(response.choices[0].message.content or "{}")
+
+                if "content" not in result:
+                    result["content"] = "Hello! I'm Autopilot, your robotics procurement consultant."
+                if "chips" not in result:
+                    result["chips"] = []
+                if "ready_for_roi" not in result:
+                    result["ready_for_roi"] = False
+
+            except Exception as e:
+                logger.error("Failed to generate initial greeting: %s", str(e))
+                # Fallback greeting
+                if company_name:
+                    result = {
+                        "content": f"Welcome! I see you're with {company_name}. I'm Autopilot, here to help you find the right cleaning automation.",
+                        "chips": [],
+                        "ready_for_roi": False,
+                    }
+                else:
+                    result = {
+                        "content": "Hello! I'm Autopilot, your robotics procurement consultant. I'll help you discover the right cleaning automation for your facility.",
+                        "chips": ["Enter company name"],
+                        "ready_for_roi": False,
+                    }
+
+        # Save the greeting as a message
+        msg_data = await self.conversation_service.add_message(
+            conversation_id=conversation_id,
+            role=MessageRole.ASSISTANT,
+            content=result["content"],
+            metadata={
+                "model": self.settings.openai_model,
+                "chips": result["chips"],
+                "ready_for_roi": result.get("ready_for_roi", False),
+                "is_initial_greeting": True,
+            },
+        )
+
+        msg_response = MessageResponse(
+            id=msg_data["id"],
+            conversation_id=msg_data["conversation_id"],
+            role=msg_data["role"],
+            content=msg_data["content"],
+            metadata=msg_data.get("metadata", {}),
+            created_at=msg_data["created_at"],
+        )
+
+        return {
+            "content": result["content"],
+            "chips": result["chips"],
+            "message": msg_response,
+        }
+
+    def _build_initial_greeting_prompt(
+        self,
+        current_answers: dict[str, Any],
+        company_name: str | None,
+        missing_questions: list[dict[str, Any]],
+        source_context: dict[str, Any] | None = None,
+    ) -> str:
+        """Build prompt for generating initial greeting.
+
+        Args:
+            current_answers: What we already know about this user.
+            company_name: The user's company name if known.
+            missing_questions: Questions we still need to ask.
+            source_context: Optional context about referral source.
+
+        Returns:
+            str: System prompt for greeting generation.
+        """
+        # Format what we know
+        if current_answers:
+            known_info = "\n".join(
+                f"- {key}: {ans.get('value', 'unknown')}"
+                for key, ans in current_answers.items()
+            )
+            # Highlight company name specifically if known
+            if company_name:
+                known_info = f"COMPANY: {company_name}\n" + known_info
+        else:
+            known_info = "Nothing yet - this is a brand new user."
+
+        # Format source context if available
+        source_info = ""
+        if source_context:
+            source_type = source_context.get("source", "direct")
+            if source_type == "email":
+                source_info = "\nSOURCE: User arrived via email campaign. Reference the email content if relevant."
+            elif source_type == "referral":
+                referrer = source_context.get("referrer", "a colleague")
+                source_info = f"\nSOURCE: User was referred by {referrer}. Acknowledge the referral warmly."
+            elif source_type == "demo_request":
+                source_info = "\nSOURCE: User requested a demo. They're actively evaluating solutions."
+
+        # First question to ask
+        first_question = missing_questions[0] if missing_questions else None
+        next_question_guidance = ""
+        if first_question:
+            next_question_guidance = f"""
+FIRST QUESTION TO ASK:
+- Key: {first_question['key']}
+- Question: "{first_question['question']}"
+- Suggested chips: {first_question.get('chips', [])}
+"""
+
+        return f"""You are Autopilot, a premium robotics procurement consultant generating an initial greeting.
+
+WHAT YOU KNOW ABOUT THIS USER:
+{known_info}
+{source_info}
+{next_question_guidance}
+INSTRUCTIONS:
+1. Generate a warm, professional greeting
+2. If you know the company name, acknowledge it naturally (don't ask again)
+3. If you know other details (company type, facility info), reference them briefly
+4. If this is a returning user with progress, acknowledge their journey
+5. End with the first missing question woven in naturally (if any)
+6. Keep it concise - 2-3 sentences max
+7. Set chips to help the user respond (matching the question you're asking)
+8. If all questions are answered, congratulate them and suggest viewing ROI
+
+TONE: Premium, consultative, welcoming. Like a senior consultant greeting a valued client.
+
+IMPORTANT: Your response must be valid JSON with content (string), chips (array), and ready_for_roi (boolean)."""
+
+    async def generate_phase_transition_message(
+        self,
+        conversation_id: UUID,
+        transition_type: str,
+        session_id: UUID | None = None,
+        profile_id: UUID | None = None,
+        context: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Generate a dynamic message for phase transitions.
+
+        Args:
+            conversation_id: The conversation's UUID.
+            transition_type: Type of transition ('discovery_to_roi' or 'roi_to_greenlight').
+            session_id: Optional session ID for anonymous users.
+            profile_id: Optional profile ID for authenticated users.
+            context: Optional additional context (selected robot, ROI data, etc.)
+
+        Returns:
+            dict: {
+                "content": str,  # The transition message
+                "chips": list[str],  # Quick reply options
+                "message": MessageResponse,  # The saved message
+            }
+        """
+        # Gather context about what we know
+        current_answers: dict[str, Any] = {}
+        company_name: str | None = None
+        selected_robot: dict[str, Any] | None = None
+
+        if profile_id:
+            from src.services.discovery_profile_service import DiscoveryProfileService
+            from src.services.company_service import CompanyService
+
+            discovery_service = DiscoveryProfileService()
+            discovery_profile = await discovery_service.get_by_profile_id(profile_id)
+            if discovery_profile:
+                current_answers = discovery_profile.get("answers", {})
+                # Get selected robot if available
+                selected_ids = discovery_profile.get("selected_product_ids", [])
+                if selected_ids:
+                    robot_service = RobotCatalogService()
+                    robots = await robot_service.get_robots_by_ids([UUID(id) for id in selected_ids[:1]])
+                    if robots:
+                        selected_robot = robots[0]
+
+            # Check for company
+            company_service = CompanyService()
+            company = await company_service.get_user_company(profile_id)
+            if company and company.get("name"):
+                company_name = company["name"]
+        elif session_id:
+            session = await self.session_service.get_session_by_id(session_id)
+            if session:
+                current_answers = session.get("answers", {})
+                if "company_name" in current_answers:
+                    company_name = current_answers["company_name"].get("value")
+
+        # Build the transition prompt based on type
+        if transition_type == "discovery_to_roi":
+            prompt = self._build_roi_transition_prompt(current_answers, company_name, selected_robot, context)
+            default_chips = ["View Savings Breakdown", "Compare Options"]
+        elif transition_type == "roi_to_greenlight":
+            prompt = self._build_greenlight_transition_prompt(current_answers, company_name, selected_robot, context)
+            default_chips = ["Set Target Date", "Invite Team"]
+        else:
+            raise ValueError(f"Unknown transition type: {transition_type}")
+
+        # Generate message
+        if self.settings.mock_openai:
+            if transition_type == "discovery_to_roi":
+                content = f"Excellent! Based on what you've shared about {company_name or 'your facility'}, I've prepared a detailed ROI analysis. Let's see how automation can transform your operations."
+            else:
+                content = f"Great progress! You're ready to move forward with deployment. Let's finalize the logistics - you can set a target start date, invite team members, and secure your lease."
+            result = {"content": content, "chips": default_chips}
+        else:
+            try:
+                response = self.client.chat.completions.create(
+                    model=self.settings.openai_model,
+                    messages=[
+                        {"role": "system", "content": prompt},
+                        {"role": "user", "content": f"Generate {transition_type} transition message"},
+                    ],
+                    response_format=DISCOVERY_RESPONSE_SCHEMA,
+                    max_completion_tokens=300,
+                    temperature=0.7,
+                )
+                result = json.loads(response.choices[0].message.content or "{}")
+
+                if "content" not in result:
+                    result["content"] = "Let's continue to the next step."
+                if "chips" not in result:
+                    result["chips"] = default_chips
+
+            except Exception as e:
+                logger.error("Failed to generate transition message: %s", str(e))
+                # Fallback messages
+                if transition_type == "discovery_to_roi":
+                    result = {
+                        "content": "I've compiled your discovery data into a comprehensive ROI model. Let's explore how automation can improve your facility's economics.",
+                        "chips": default_chips,
+                    }
+                else:
+                    result = {
+                        "content": "You're ready for the final step. Let's finalize your deployment logistics and secure your implementation slot.",
+                        "chips": default_chips,
+                    }
+
+        # Save the message
+        msg_data = await self.conversation_service.add_message(
+            conversation_id=conversation_id,
+            role=MessageRole.ASSISTANT,
+            content=result["content"],
+            metadata={
+                "model": self.settings.openai_model,
+                "chips": result["chips"],
+                "transition_type": transition_type,
+            },
+        )
+
+        msg_response = MessageResponse(
+            id=msg_data["id"],
+            conversation_id=msg_data["conversation_id"],
+            role=msg_data["role"],
+            content=msg_data["content"],
+            metadata=msg_data.get("metadata", {}),
+            created_at=msg_data["created_at"],
+        )
+
+        return {
+            "content": result["content"],
+            "chips": result["chips"],
+            "message": msg_response,
+        }
+
+    def _build_roi_transition_prompt(
+        self,
+        current_answers: dict[str, Any],
+        company_name: str | None,
+        selected_robot: dict[str, Any] | None,
+        context: dict[str, Any] | None,
+    ) -> str:
+        """Build prompt for ROI transition message."""
+        # Format discovery summary
+        discovery_summary = "\n".join(
+            f"- {key}: {ans.get('value', 'unknown')}"
+            for key, ans in current_answers.items()
+        ) if current_answers else "Basic facility information collected"
+
+        robot_info = ""
+        if selected_robot:
+            robot_info = f"""
+SELECTED ROBOT:
+- Name: {selected_robot.get('name', 'Unknown')}
+- Category: {selected_robot.get('category', 'Cleaning Robot')}
+- Monthly Lease: ${selected_robot.get('monthly_lease', 0):,.0f}
+"""
+
+        return f"""You are Autopilot, a premium robotics procurement consultant.
+
+The user has completed discovery and is about to view the ROI analysis.
+
+COMPANY: {company_name or 'Unknown'}
+
+DISCOVERY DATA COLLECTED:
+{discovery_summary}
+{robot_info}
+CONTEXT: The user clicked "Show Me" to view their ROI calculations. They're about to see how automation changes the economics of their facility.
+
+INSTRUCTIONS:
+1. Generate an enthusiastic but professional transition message
+2. Acknowledge what you've learned about their facility (reference 1-2 specific details)
+3. Build anticipation for the ROI insights they're about to see
+4. Keep it to 2-3 sentences max
+5. Set chips for next actions in the ROI view
+
+TONE: Confident, consultative, value-focused. Like a consultant about to present compelling findings.
+
+IMPORTANT: Your response must be valid JSON with content (string), chips (array), and ready_for_roi (boolean - set to true)."""
+
+    def _build_greenlight_transition_prompt(
+        self,
+        current_answers: dict[str, Any],
+        company_name: str | None,
+        selected_robot: dict[str, Any] | None,
+        context: dict[str, Any] | None,
+    ) -> str:
+        """Build prompt for Greenlight transition message."""
+        robot_info = ""
+        if selected_robot:
+            robot_info = f"""
+SELECTED ROBOT:
+- Name: {selected_robot.get('name', 'Unknown')}
+- Monthly Lease: ${selected_robot.get('monthly_lease', 0):,.0f}
+"""
+
+        return f"""You are Autopilot, a premium robotics procurement consultant.
+
+The user has reviewed their ROI analysis and is ready to proceed to deployment.
+
+COMPANY: {company_name or 'Unknown'}
+{robot_info}
+CONTEXT: The user is moving to the Greenlight phase where they will:
+- Set a target deployment start date
+- Invite team members to the project
+- Finalize and purchase their robot lease
+
+INSTRUCTIONS:
+1. Generate an encouraging closing message
+2. Acknowledge they've made great progress
+3. Briefly outline what they'll do next (date, team, purchase)
+4. Create urgency/excitement without being pushy
+5. Keep it to 2-3 sentences max
+6. Set chips that help them take action
+
+TONE: Supportive, confident, closing-focused. Like a consultant guiding a client to a successful decision.
+
+IMPORTANT: Your response must be valid JSON with content (string), chips (array), and ready_for_roi (boolean - can be false now)."""
 
     async def generate_discovery_response(
         self,
@@ -506,16 +1039,54 @@ IMPORTANT: Your response must be valid JSON with content (string), chips (array)
         """
         # Get current answers from session or discovery profile
         current_answers: dict[str, Any] = {}
+        discovery_service = None  # Will be set for authenticated users
         if profile_id:
             # Authenticated user - get answers from discovery profile
             from src.services.discovery_profile_service import DiscoveryProfileService
+            from src.services.company_service import CompanyService
             discovery_service = DiscoveryProfileService()
             discovery_profile = await discovery_service.get_by_profile_id(profile_id)
+            logger.info(
+                "Discovery context lookup: profile_id=%s, found=%s, answers_count=%d",
+                profile_id,
+                discovery_profile is not None,
+                len(discovery_profile.get("answers", {})) if discovery_profile else 0,
+            )
             if discovery_profile:
                 current_answers = discovery_profile.get("answers", {})
+                if current_answers:
+                    logger.debug("Discovery answers keys: %s", list(current_answers.keys()))
+                else:
+                    logger.warning(
+                        "Discovery profile exists but has no answers for profile_id=%s",
+                        profile_id,
+                    )
+
+            # If user has a company, inject company_name into answers if not already present
+            if "company_name" not in current_answers:
+                company_service = CompanyService()
+                company = await company_service.get_user_company(profile_id)
+                if company and company.get("name"):
+                    current_answers["company_name"] = {
+                        "questionId": 0,  # Synthetic answer from company record
+                        "value": company["name"],
+                        "label": "Company Name",
+                        "key": "company_name",
+                        "group": "Company",
+                    }
+                    logger.info(
+                        "Injected company_name from user's company: %s",
+                        company["name"],
+                    )
         elif session_id:
             # Anonymous user - get answers from session
             session = await self.session_service.get_session_by_id(session_id)
+            logger.info(
+                "Session context lookup: session_id=%s, found=%s, answers_count=%d",
+                session_id,
+                session is not None,
+                len(session.get("answers", {})) if session else 0,
+            )
             if session:
                 current_answers = session.get("answers", {})
 
@@ -547,9 +1118,55 @@ IMPORTANT: Your response must be valid JSON with content (string), chips (array)
             created_at=user_msg_data["created_at"],
         )
 
-        # Build discovery-specific prompt with robot catalog
+        # Fetch recommendations if we have enough answers (4+ of 6 required questions)
+        # Use persistent database cache for authenticated users to ensure consistent recommendations
+        current_recommendations = None
+        if len(answered_keys) >= 4 and current_answers:
+            try:
+                from src.schemas.roi import RecommendationsRequest, RecommendationsResponse
+                from src.services.roi_service import get_roi_service
+
+                # Check persistent cache first for authenticated users
+                if profile_id and discovery_service:
+                    cached = await discovery_service.get_cached_recommendations(
+                        profile_id, current_answers
+                    )
+                    if cached:
+                        try:
+                            current_recommendations = RecommendationsResponse(**cached)
+                            logger.info("Using cached recommendations for discovery context")
+                        except Exception as e:
+                            logger.warning("Failed to parse cached recommendations: %s", e)
+
+                # Fetch fresh recommendations if not cached
+                if current_recommendations is None:
+                    roi_service = get_roi_service()
+                    rec_request = RecommendationsRequest(answers=current_answers, top_k=3)
+                    current_recommendations = await roi_service.get_recommendations(
+                        request=rec_request,
+                        session_id=session_id,
+                        profile_id=profile_id,
+                        use_llm=True,
+                    )
+                    logger.debug("Fetched fresh recommendations for discovery context")
+
+                    # Cache recommendations for authenticated users
+                    if profile_id and discovery_service and current_recommendations:
+                        try:
+                            await discovery_service.set_cached_recommendations(
+                                profile_id,
+                                current_answers,
+                                current_recommendations.model_dump(mode="json"),
+                            )
+                        except Exception as cache_err:
+                            logger.warning("Failed to cache recommendations: %s", cache_err)
+            except Exception as e:
+                logger.warning("Failed to fetch recommendations for context: %s", str(e))
+
+        # Build discovery-specific prompt with robot catalog, recommendations, and current message
+        # Pass current message so agent can recognize inline answers without pre-extraction
         system_prompt = self._build_discovery_prompt(
-            current_answers, missing_questions, robot_catalog
+            current_answers, missing_questions, robot_catalog, current_recommendations, user_message
         )
 
         # Get conversation history
@@ -563,6 +1180,15 @@ IMPORTANT: Your response must be valid JSON with content (string), chips (array)
         for msg in recent_messages:
             messages.append({"role": msg["role"], "content": msg["content"]})
 
+        # Determine budget key and check token budget
+        budget_key: str | None = None
+        is_authenticated = False
+        if profile_id:
+            budget_key = f"user:{profile_id}"
+            is_authenticated = True
+        elif session_id:
+            budget_key = f"session:{session_id}"
+
         # Generate response with structured output
         if self.settings.mock_openai:
             logger.info("Mock mode enabled - returning mock discovery response")
@@ -574,6 +1200,21 @@ IMPORTANT: Your response must be valid JSON with content (string), chips (array)
                 "ready_for_roi": len(missing_questions) <= 2,
             }
         else:
+            # Check token budget before making API call
+            if budget_key:
+                token_budget = get_token_budget()
+                # Estimate tokens: rough estimate of input + max output
+                estimated_tokens = len(user_message) // 4 + 500  # ~4 chars per token
+                allowed, remaining, limit = await token_budget.check_budget(
+                    budget_key, estimated_tokens, is_authenticated
+                )
+                if not allowed:
+                    raise TokenBudgetError(
+                        message="Daily token budget exceeded. Please try again tomorrow.",
+                        tokens_used=limit - remaining,
+                        daily_limit=limit,
+                    )
+
             try:
                 response = self.client.chat.completions.create(
                     model=self.settings.openai_model,
@@ -584,6 +1225,16 @@ IMPORTANT: Your response must be valid JSON with content (string), chips (array)
                 )
 
                 result = json.loads(response.choices[0].message.content or "{}")
+
+                # Track actual token usage
+                if budget_key and response.usage:
+                    total_tokens = response.usage.total_tokens
+                    await token_budget.record_usage(budget_key, total_tokens)
+                    logger.debug(
+                        "Token usage recorded: %d tokens for %s",
+                        total_tokens,
+                        budget_key,
+                    )
 
                 # Ensure required fields exist
                 if "content" not in result:

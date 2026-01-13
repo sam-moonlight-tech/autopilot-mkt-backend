@@ -47,3 +47,4 @@ class DiscoveryProfileResponse(BaseModel):
     greenlight: GreenlightSchema | None = Field(default=None, description="Greenlight phase data")
     created_at: datetime = Field(description="Profile creation timestamp")
     updated_at: datetime = Field(description="Last update timestamp")
+    ready_for_roi: bool = Field(default=False, description="Whether enough info gathered to show ROI analysis (4+ of 6 required questions)")

@@ -34,3 +34,22 @@ def get_stripe() -> stripe:
         called before using Stripe API calls.
     """
     return stripe
+
+
+def get_stripe_api_key(use_test_mode: bool = False) -> str:
+    """Get the appropriate Stripe API key.
+
+    Args:
+        use_test_mode: If True, return test API key (for test accounts in production).
+
+    Returns:
+        str: The Stripe API key to use.
+
+    Note:
+        In production with test accounts enabled, test accounts use
+        stripe_secret_key_test for Stripe operations.
+    """
+    settings = get_settings()
+    if use_test_mode and settings.stripe_secret_key_test:
+        return settings.stripe_secret_key_test
+    return settings.stripe_secret_key

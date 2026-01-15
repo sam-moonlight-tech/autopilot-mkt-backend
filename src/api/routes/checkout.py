@@ -17,13 +17,19 @@ from src.services.profile_service import ProfileService
 router = APIRouter(prefix="/checkout", tags=["checkout"])
 
 
-async def _get_profile_id_for_auth(auth: AuthContext) -> UUID | None:
-    """Get the profile ID for an authenticated user, creating profile if needed."""
+async def _get_profile_for_auth(auth: AuthContext) -> tuple[UUID | None, bool]:
+    """Get the profile ID and test account flag for an authenticated user.
+
+    Creates profile if needed.
+
+    Returns:
+        tuple: (profile_id, is_test_account)
+    """
     if not auth.is_authenticated or not auth.user:
-        return None
+        return None, False
     service = ProfileService()
     profile = await service.get_or_create_profile(auth.user.user_id, auth.user.email)
-    return UUID(profile["id"])
+    return UUID(profile["id"]), profile.get("is_test_account", False)
 
 
 @router.post(
@@ -54,8 +60,8 @@ async def create_checkout_session(
     """
     service = CheckoutService()
 
-    # Extract profile_id or session_id from auth context
-    profile_id = await _get_profile_id_for_auth(auth)
+    # Extract profile_id, is_test_account, or session_id from auth context
+    profile_id, is_test_account = await _get_profile_for_auth(auth)
     session_id = auth.session.session_id if auth.session else None
 
     try:
@@ -66,12 +72,14 @@ async def create_checkout_session(
             profile_id=profile_id,
             session_id=session_id,
             customer_email=data.customer_email,
+            is_test_account=is_test_account,
         )
 
         return CheckoutSessionResponse(
             checkout_url=result["checkout_url"],
             order_id=result["order_id"],
             stripe_session_id=result["stripe_session_id"],
+            is_test_mode=result.get("is_test_mode", False),
         )
 
     except ValueError as e:
@@ -101,7 +109,7 @@ async def list_orders(auth: DualAuth) -> OrderListResponse:
         OrderListResponse: List of orders.
     """
     service = CheckoutService()
-    profile_id = await _get_profile_id_for_auth(auth)
+    profile_id, _ = await _get_profile_for_auth(auth)
 
     if profile_id:
         orders = await service.get_orders_for_profile(profile_id)
@@ -137,7 +145,7 @@ async def get_order(order_id: UUID, auth: DualAuth) -> OrderResponse:
     service = CheckoutService()
 
     # Check if user can access this order
-    profile_id = await _get_profile_id_for_auth(auth)
+    profile_id, _ = await _get_profile_for_auth(auth)
     session_id = auth.session.session_id if auth.session else None
 
     can_access = await service.can_access_order(

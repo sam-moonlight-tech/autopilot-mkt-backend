@@ -9,7 +9,7 @@ from uuid import UUID
 import stripe
 
 from src.core.config import get_settings
-from src.core.stripe import get_stripe
+from src.core.stripe import get_stripe, get_stripe_api_key
 from src.core.supabase import get_supabase_client
 from src.services.robot_catalog_service import RobotCatalogService
 
@@ -34,6 +34,7 @@ class CheckoutService:
         profile_id: UUID | None = None,
         session_id: UUID | None = None,
         customer_email: str | None = None,
+        is_test_account: bool = False,
     ) -> dict[str, Any]:
         """Create a Stripe Checkout Session and pending order.
 
@@ -44,19 +45,22 @@ class CheckoutService:
             profile_id: Optional profile ID for authenticated users.
             session_id: Optional session ID for anonymous users.
             customer_email: Optional pre-fill email.
+            is_test_account: If True, use Stripe test mode (test keys and test price IDs).
 
         Returns:
-            dict: Contains checkout_url, order_id, stripe_session_id.
+            dict: Contains checkout_url, order_id, stripe_session_id, is_test_mode.
 
         Raises:
             ValueError: If product not found or inactive, or Stripe not configured.
             Exception: If Stripe API call fails.
         """
-        if not self.settings.stripe_secret_key:
+        # Get appropriate Stripe API key
+        stripe_api_key = get_stripe_api_key(use_test_mode=is_test_account)
+        if not stripe_api_key:
             raise ValueError("Stripe is not configured. Please set STRIPE_SECRET_KEY environment variable.")
-        
-        # Get product with Stripe IDs
-        robot = await self.robot_service.get_robot_with_stripe_ids(product_id)
+
+        # Get product with appropriate Stripe IDs (test or production)
+        robot = await self.robot_service.get_robot_with_stripe_ids(product_id, use_test_mode=is_test_account)
         if not robot:
             raise ValueError("Product not found")
 
@@ -112,6 +116,7 @@ class CheckoutService:
                 "metadata": {
                     "order_id": str(order_id),
                     "session_id": str(session_id) if session_id else "",
+                    "is_test_mode": "true" if is_test_account else "false",
                 },
             }
 
@@ -119,28 +124,36 @@ class CheckoutService:
             # In production mode, Stripe handles customer creation automatically
             if customer_email:
                 # Create or find existing customer
-                existing_customers = self.stripe.Customer.list(email=customer_email, limit=1)
+                existing_customers = self.stripe.Customer.list(
+                    email=customer_email, limit=1, api_key=stripe_api_key
+                )
                 if existing_customers.data:
                     checkout_params["customer"] = existing_customers.data[0].id
                 else:
-                    customer = self.stripe.Customer.create(email=customer_email)
+                    customer = self.stripe.Customer.create(
+                        email=customer_email, api_key=stripe_api_key
+                    )
                     checkout_params["customer"] = customer.id
             else:
                 # Create anonymous customer for test mode compatibility
-                customer = self.stripe.Customer.create()
+                customer = self.stripe.Customer.create(api_key=stripe_api_key)
                 checkout_params["customer"] = customer.id
 
-            stripe_session = self.stripe.checkout.Session.create(**checkout_params)
+            stripe_session = self.stripe.checkout.Session.create(
+                **checkout_params, api_key=stripe_api_key
+            )
 
-            # Update order with Stripe session ID
-            self.client.table("orders").update(
-                {"stripe_checkout_session_id": stripe_session.id}
-            ).eq("id", order_id).execute()
+            # Update order with Stripe session ID and test mode flag
+            self.client.table("orders").update({
+                "stripe_checkout_session_id": stripe_session.id,
+                "metadata": {"is_test_mode": is_test_account},
+            }).eq("id", order_id).execute()
 
             return {
                 "checkout_url": stripe_session.url,
                 "order_id": UUID(order_id),
                 "stripe_session_id": stripe_session.id,
+                "is_test_mode": is_test_account,
             }
 
         except stripe.error.StripeError as e:
@@ -295,30 +308,54 @@ class CheckoutService:
 
     def verify_webhook_signature(
         self, payload: bytes, sig_header: str
-    ) -> dict[str, Any]:
+    ) -> tuple[dict[str, Any], bool]:
         """Verify Stripe webhook signature and return event.
+
+        Tries production webhook secret first, then test webhook secret.
+        This allows handling webhooks from both test accounts and production
+        accounts in the same production environment.
 
         Args:
             payload: Raw webhook payload bytes.
             sig_header: Stripe-Signature header value.
 
         Returns:
-            dict: Verified Stripe event.
+            tuple: (Verified Stripe event, is_test_mode boolean).
 
         Raises:
             ValueError: If signature is invalid or Stripe not configured.
         """
-        if not self.settings.stripe_webhook_secret:
+        secrets_to_try = []
+
+        # Try production secret first
+        if self.settings.stripe_webhook_secret:
+            secrets_to_try.append((self.settings.stripe_webhook_secret, False))
+            logger.debug("Will try production webhook secret: %s...", self.settings.stripe_webhook_secret[:10])
+
+        # Then try test secret
+        if self.settings.stripe_webhook_secret_test:
+            secrets_to_try.append((self.settings.stripe_webhook_secret_test, True))
+            logger.debug("Will try test webhook secret: %s...", self.settings.stripe_webhook_secret_test[:10])
+
+        if not secrets_to_try:
             raise ValueError("Stripe webhook secret is not configured. Please set STRIPE_WEBHOOK_SECRET environment variable.")
-        
-        try:
-            event = self.stripe.Webhook.construct_event(
-                payload, sig_header, self.settings.stripe_webhook_secret
-            )
-            return event
-        except stripe.error.SignatureVerificationError as e:
-            logger.warning("Invalid webhook signature: %s", str(e))
-            raise ValueError("Invalid webhook signature") from e
+
+        logger.info("Attempting webhook verification with %d secret(s)", len(secrets_to_try))
+
+        last_error = None
+        for secret, is_test in secrets_to_try:
+            try:
+                event = self.stripe.Webhook.construct_event(
+                    payload, sig_header, secret
+                )
+                logger.info("Webhook verified with %s secret", "test" if is_test else "production")
+                return event, is_test
+            except stripe.error.SignatureVerificationError as e:
+                last_error = e
+                continue
+
+        logger.warning("Invalid webhook signature: %s", str(last_error))
+        raise ValueError("Invalid webhook signature") from last_error
 
     async def can_access_order(
         self,

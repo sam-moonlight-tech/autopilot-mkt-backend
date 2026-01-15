@@ -3,7 +3,12 @@
 from fastapi import APIRouter, HTTPException, status
 
 from src.api.deps import CurrentUser
-from src.schemas.profile import CompanySummary, ProfileResponse, ProfileUpdate, ProfileWithCompanies
+from src.schemas.profile import (
+    CompanySummary,
+    ProfileResponse,
+    ProfileUpdate,
+    SetTestAccountRequest,
+)
 from src.services.profile_service import ProfileService
 
 router = APIRouter(prefix="/profiles", tags=["profiles"])
@@ -92,3 +97,48 @@ async def get_my_companies(user: CurrentUser) -> list[CompanySummary]:
     """
     service = ProfileService()
     return await service.get_user_companies(user.user_id)
+
+
+@router.post(
+    "/me/test-account",
+    response_model=ProfileResponse,
+    summary="Set test account mode",
+    description="Enable or disable Stripe test mode for this account. When enabled, checkout uses Stripe test keys.",
+)
+async def set_test_account(
+    data: SetTestAccountRequest,
+    user: CurrentUser,
+) -> ProfileResponse:
+    """Enable or disable test account mode.
+
+    Test accounts use Stripe test mode for checkout, even in production.
+    This allows testing the full checkout flow without real charges.
+
+    Args:
+        data: Request with is_test_account flag.
+        user: The authenticated user context.
+
+    Returns:
+        ProfileResponse: The updated profile data.
+
+    Raises:
+        HTTPException: 404 if profile not found.
+    """
+    service = ProfileService()
+
+    # Get the profile
+    profile = await service.get_or_create_profile(user_id=user.user_id, email=user.email)
+
+    # Update test account flag
+    updated = await service.set_test_account(
+        profile_id=profile["id"],
+        is_test_account=data.is_test_account,
+    )
+
+    if not updated:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Profile not found",
+        )
+
+    return ProfileResponse(**updated)

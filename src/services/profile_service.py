@@ -125,6 +125,31 @@ class ProfileService:
 
         return response.data[0] if response.data else None
 
+    async def set_test_account(
+        self,
+        profile_id: UUID,
+        is_test_account: bool,
+    ) -> dict[str, Any] | None:
+        """Set the test account flag for a profile.
+
+        Test accounts use Stripe test mode for checkout in production.
+
+        Args:
+            profile_id: The profile's UUID.
+            is_test_account: Whether to enable test account mode.
+
+        Returns:
+            dict | None: The updated profile data or None if not found.
+        """
+        response = (
+            self.client.table("profiles")
+            .update({"is_test_account": is_test_account})
+            .eq("id", str(profile_id))
+            .execute()
+        )
+
+        return response.data[0] if response.data else None
+
     async def get_user_companies(self, user_id: UUID) -> list[CompanySummary]:
         """Get all companies a user belongs to.
 

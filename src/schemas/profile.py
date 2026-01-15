@@ -26,6 +26,14 @@ class ProfileUpdate(BaseModel):
     avatar_url: str | None = Field(default=None, description="New avatar URL")
 
 
+class SetTestAccountRequest(BaseModel):
+    """Schema for setting test account mode."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    is_test_account: bool = Field(description="Whether to enable Stripe test mode for this account")
+
+
 class ProfileResponse(ProfileBase):
     """Schema for profile API responses."""
 
@@ -33,6 +41,7 @@ class ProfileResponse(ProfileBase):
 
     id: UUID = Field(description="Profile unique identifier")
     user_id: UUID = Field(description="Associated auth user ID")
+    is_test_account: bool = Field(default=False, description="Whether this account uses Stripe test mode")
     created_at: datetime = Field(description="Profile creation timestamp")
     updated_at: datetime = Field(description="Last update timestamp")
 

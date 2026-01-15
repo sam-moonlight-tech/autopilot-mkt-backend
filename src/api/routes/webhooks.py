@@ -50,8 +50,8 @@ async def stripe_webhook(request: Request) -> dict[str, str]:
     service = CheckoutService()
 
     try:
-        # Verify signature and get event
-        event = service.verify_webhook_signature(payload, sig_header)
+        # Verify signature and get event (tries both production and test secrets)
+        event, is_test_mode = service.verify_webhook_signature(payload, sig_header)
     except ValueError as e:
         logger.warning("Invalid webhook signature: %s", str(e))
         raise HTTPException(
@@ -61,7 +61,11 @@ async def stripe_webhook(request: Request) -> dict[str, str]:
 
     # Process the event
     event_type = event.get("type", "")
-    logger.info("Processing Stripe webhook event: %s", event_type)
+    logger.info(
+        "Processing Stripe webhook event: %s (test_mode=%s)",
+        event_type,
+        is_test_mode,
+    )
 
     if event_type == "checkout.session.completed":
         await service.handle_checkout_completed(event)

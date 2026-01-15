@@ -107,6 +107,7 @@ class SessionResponse(BaseModel):
     conversation_id: UUID | None = Field(default=None, description="Associated conversation ID")
     expires_at: datetime = Field(description="Session expiration timestamp")
     created_at: datetime = Field(description="Session creation timestamp")
+    ready_for_roi: bool = Field(default=False, description="Whether enough info gathered for ROI (4+ of 6 required questions)")
 
 
 class SessionClaimResponse(BaseModel):

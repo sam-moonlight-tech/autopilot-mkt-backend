@@ -357,7 +357,7 @@ class RobotCatalogService:
         return response.data if response and response.data else None
 
     async def get_robot_with_stripe_ids(
-        self, robot_id: UUID
+        self, robot_id: UUID, use_test_mode: bool | None = None
     ) -> dict[str, Any] | None:
         """Get a robot including Stripe product and price IDs.
 
@@ -366,6 +366,8 @@ class RobotCatalogService:
 
         Args:
             robot_id: The robot's UUID.
+            use_test_mode: If True, force test mode IDs. If False, force production IDs.
+                          If None (default), use environment-based detection.
 
         Returns:
             dict | None: The robot data with Stripe IDs or None if not found.
@@ -389,8 +391,12 @@ class RobotCatalogService:
         robot = response.data
         settings = get_settings()
 
+        # Determine if we should use test mode IDs
+        # Priority: explicit parameter > environment-based detection
+        should_use_test = use_test_mode if use_test_mode is not None else settings.is_stripe_test_mode
+
         # Return environment-appropriate Stripe IDs
-        if settings.is_stripe_test_mode:
+        if should_use_test:
             robot["stripe_product_id"] = robot.get("stripe_product_id_test") or robot.get("stripe_product_id")
             robot["stripe_lease_price_id"] = robot.get("stripe_lease_price_id_test") or robot.get("stripe_lease_price_id")
 

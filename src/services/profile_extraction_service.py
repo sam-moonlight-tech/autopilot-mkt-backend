@@ -230,14 +230,14 @@ class ProfileExtractionService:
             if not answer.get("value"):
                 continue
 
-            # Enrich with question metadata if missing
+            # Enrich with question metadata from constants (don't trust LLM values)
             question = QUESTION_BY_KEY[key]
             validated[key] = {
-                "questionId": answer.get("questionId", question["id"]),
+                "questionId": question["id"],  # Always use correct ID from constants
                 "key": key,
-                "label": answer.get("label", question["label"]),
+                "label": question["label"],  # Always use correct label
                 "value": str(answer["value"]),
-                "group": answer.get("group", question["group"]),
+                "group": question["group"],  # Always use correct group
             }
 
         return validated

@@ -42,6 +42,7 @@ class CheckoutSessionResponse(BaseModel):
     checkout_url: str = Field(description="Stripe Checkout URL to redirect to")
     order_id: UUID = Field(description="Created order UUID")
     stripe_session_id: str = Field(description="Stripe Checkout Session ID")
+    is_test_mode: bool = Field(default=False, description="Whether this checkout uses Stripe test mode")
 
 
 class OrderResponse(BaseModel):

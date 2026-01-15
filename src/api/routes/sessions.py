@@ -14,8 +14,18 @@ from src.api.deps import (
 )
 from src.schemas.session import SessionClaimResponse, SessionResponse, SessionUpdate
 from src.services.checkout_service import CheckoutService
+from src.services.extraction_constants import REQUIRED_QUESTION_KEYS
 from src.services.profile_service import ProfileService
 from src.services.session_service import SessionService
+
+# Minimum required questions answered to be ready for ROI (4 of 6)
+MIN_QUESTIONS_FOR_ROI = 4
+
+
+def compute_session_ready_for_roi(answers: dict) -> bool:
+    """Compute whether session has enough answers for ROI analysis."""
+    answered_required = sum(1 for key in REQUIRED_QUESTION_KEYS if key in answers)
+    return answered_required >= MIN_QUESTIONS_FOR_ROI
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
 
@@ -44,7 +54,8 @@ async def create_session(response: Response) -> SessionResponse:
 
     set_session_cookie(response, token)
 
-    return SessionResponse(**session_data)
+    # New sessions have no answers, so ready_for_roi is always False
+    return SessionResponse(**session_data, ready_for_roi=False)
 
 
 @router.get(
@@ -89,7 +100,11 @@ async def get_my_session(auth: DualAuth) -> SessionResponse:
             detail="Session not found",
         )
 
-    return SessionResponse(**session)
+    # Compute ready_for_roi from answers
+    answers = session.get("answers", {})
+    ready_for_roi = compute_session_ready_for_roi(answers)
+
+    return SessionResponse(**session, ready_for_roi=ready_for_roi)
 
 
 @router.put(
@@ -138,7 +153,11 @@ async def update_my_session(
             detail="Session not found",
         )
 
-    return SessionResponse(**session)
+    # Compute ready_for_roi from updated answers
+    answers = session.get("answers", {})
+    ready_for_roi = compute_session_ready_for_roi(answers)
+
+    return SessionResponse(**session, ready_for_roi=ready_for_roi)
 
 
 @router.post(

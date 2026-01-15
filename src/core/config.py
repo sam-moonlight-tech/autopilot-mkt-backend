@@ -32,7 +32,7 @@ class Settings(BaseSettings):
 
     # CORS
     cors_origins: str = Field(
-        default="http://localhost:3000,http://localhost:5173,https://autopilot-marketplace-discovery-to.vercel.app,https://autopilot-marketplace-lfvsmsod4-sachins-projects-5aeecb17.vercel.app,https://autopilot-marketplace-one.vercel.app",
+        default="http://localhost:3000,http://localhost:5173,https://autopilot-marketplace-discovery-to.vercel.app,https://autopilot-marketplace-lfvsmsod4-sachins-projects-5aeecb17.vercel.app,https://autopilot-marketplace-one.vercel.app,https://www.autopilot-marketplace.com",
         description="Comma-separated list of allowed CORS origins",
     )
 
@@ -87,8 +87,10 @@ class Settings(BaseSettings):
     llm_scoring_max_candidates: int = Field(default=8, description="Max robots to send to LLM for scoring (after RAG pre-filter)")
 
     # Stripe
-    stripe_secret_key: str = Field(default="", description="Stripe secret API key")
-    stripe_webhook_secret: str = Field(default="", description="Stripe webhook signing secret")
+    stripe_secret_key: str = Field(default="", description="Stripe secret API key (production)")
+    stripe_secret_key_test: str = Field(default="", description="Stripe test secret API key (for test accounts in production)")
+    stripe_webhook_secret: str = Field(default="", description="Stripe webhook signing secret (production)")
+    stripe_webhook_secret_test: str = Field(default="", description="Stripe test webhook signing secret (for test accounts)")
     stripe_publishable_key: str = Field(default="", description="Stripe publishable key (for frontend)")
 
     # Email (Resend)

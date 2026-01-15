@@ -42,6 +42,7 @@ Migrations are located in `supabase/migrations/` and follow sequential numbering
 - `005_create_discovery_profiles.sql` - Authenticated user discovery progress
 - `006_create_robot_catalog.sql` - Robot products with Stripe integration
 - `007_create_orders.sql` - Checkout orders
+- `011_add_test_account_flag.sql` - Test account flag for Stripe test mode in production
 
 ### RLS Policy Guidelines
 
@@ -57,3 +58,38 @@ The robot catalog supports both test and production Stripe environments:
 - `stripe_product_id_test` / `stripe_lease_price_id_test` - Test
 
 Run `python scripts/sync_stripe_products.py` to sync products to Stripe. The script auto-detects test vs production mode based on the `STRIPE_SECRET_KEY` prefix (`sk_test_` vs `sk_live_`).
+
+### Test Accounts in Production
+
+Profiles can be marked as "test accounts" to use Stripe test mode in production. This allows testing the full checkout flow without real charges.
+
+**Configuration:**
+
+```bash
+# .env (production)
+STRIPE_SECRET_KEY=sk_live_...           # Production Stripe key
+STRIPE_WEBHOOK_SECRET=whsec_...         # Production webhook secret
+STRIPE_SECRET_KEY_TEST=sk_test_...      # Test Stripe key (for test accounts)
+STRIPE_WEBHOOK_SECRET_TEST=whsec_...    # Test webhook secret
+```
+
+**Enable test mode for an account:**
+
+```bash
+# Via API (authenticated user)
+POST /api/v1/profiles/me/test-account
+{"is_test_account": true}
+
+# Via SQL (direct database)
+UPDATE profiles SET is_test_account = true WHERE email = 'test@example.com';
+```
+
+**How it works:**
+
+1. When `is_test_account=true`, checkout uses `STRIPE_SECRET_KEY_TEST` and test price IDs
+2. Webhooks try production secret first, then test secret (supports both in parallel)
+3. The `is_test_mode` flag is stored in order metadata for reference
+
+**Setting up test webhooks:**
+
+You need a separate webhook endpoint in Stripe test mode pointing to the same `/api/v1/webhooks/stripe` URL. The backend automatically routes based on which secret successfully verifies the signature.

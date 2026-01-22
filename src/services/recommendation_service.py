@@ -94,7 +94,7 @@ class RecommendationService:
         # Check cache first
         if use_cache:
             cache = get_recommendation_cache()
-            cached = cache.get(request.answers)
+            cached = await cache.get(request.answers)
             if cached:
                 logger.info("Returning cached recommendations")
                 return cached
@@ -134,7 +134,7 @@ class RecommendationService:
 
             # Cache the response
             if use_cache:
-                cache.set(request.answers, response)
+                await cache.set(request.answers, response)
 
             return response
 
@@ -241,7 +241,7 @@ class RecommendationService:
 
         # Call LLM
         try:
-            response = self.client.chat.completions.create(
+            response = self.client.chat.create(
                 model=self.settings.openai_model,
                 messages=[
                     {"role": "system", "content": SCORING_SYSTEM_PROMPT},

@@ -1,7 +1,9 @@
 """Agent service for OpenAI-powered conversations."""
 
+import asyncio
 import json
 import logging
+import time
 from typing import Any
 from uuid import UUID
 
@@ -394,7 +396,7 @@ class AgentService:
 
             try:
                 # Call OpenAI API
-                response = self.client.chat.completions.create(
+                response = self.client.chat.create(
                     model=self.settings.openai_model,
                     messages=context,  # type: ignore[arg-type]
                     max_completion_tokens=1000,
@@ -650,11 +652,11 @@ IMPORTANT: Your response must be valid JSON with content (string), chips (array)
                 chips = []
             else:
                 content = "Hello! I'm Autopilot, your robotics procurement consultant. I'll help you discover the right cleaning automation for your facility. What is the name of your company?"
-                chips = ["Enter company name"]
+                chips = []
             result = {"content": content, "chips": chips, "ready_for_roi": False}
         else:
             try:
-                response = self.client.chat.completions.create(
+                response = self.client.chat.create(
                     model=self.settings.openai_model,
                     messages=[
                         {"role": "system", "content": greeting_prompt},
@@ -685,7 +687,7 @@ IMPORTANT: Your response must be valid JSON with content (string), chips (array)
                 else:
                     result = {
                         "content": "Hello! I'm Autopilot, your robotics procurement consultant. I'll help you discover the right cleaning automation for your facility.",
-                        "chips": ["Enter company name"],
+                        "chips": [],
                         "ready_for_roi": False,
                     }
 
@@ -866,7 +868,7 @@ IMPORTANT: Your response must be valid JSON with content (string), chips (array)
             result = {"content": content, "chips": default_chips}
         else:
             try:
-                response = self.client.chat.completions.create(
+                response = self.client.chat.create(
                     model=self.settings.openai_model,
                     messages=[
                         {"role": "system", "content": prompt},
@@ -1021,6 +1023,8 @@ IMPORTANT: Your response must be valid JSON with content (string), chips (array)
         This method uses structured output to return the agent's response
         along with contextual chip options and readiness state.
 
+        Uses asyncio.gather() to parallelize independent API calls for better latency.
+
         Args:
             conversation_id: The conversation's UUID.
             user_message: The user's message content.
@@ -1037,58 +1041,85 @@ IMPORTANT: Your response must be valid JSON with content (string), chips (array)
                 "agent_message": MessageResponse,
             }
         """
-        # Get current answers from session or discovery profile
-        current_answers: dict[str, Any] = {}
-        discovery_service = None  # Will be set for authenticated users
-        if profile_id:
-            # Authenticated user - get answers from discovery profile
-            from src.services.discovery_profile_service import DiscoveryProfileService
-            from src.services.company_service import CompanyService
-            discovery_service = DiscoveryProfileService()
-            discovery_profile = await discovery_service.get_by_profile_id(profile_id)
-            logger.info(
-                "Discovery context lookup: profile_id=%s, found=%s, answers_count=%d",
-                profile_id,
-                discovery_profile is not None,
-                len(discovery_profile.get("answers", {})) if discovery_profile else 0,
-            )
-            if discovery_profile:
-                current_answers = discovery_profile.get("answers", {})
-                if current_answers:
-                    logger.debug("Discovery answers keys: %s", list(current_answers.keys()))
-                else:
-                    logger.warning(
-                        "Discovery profile exists but has no answers for profile_id=%s",
-                        profile_id,
-                    )
+        start_time = time.perf_counter()
 
-            # If user has a company, inject company_name into answers if not already present
-            if "company_name" not in current_answers:
+        # ===== PHASE 1: Parallel fetch of context data =====
+        # Load user context and robot catalog in parallel
+        from src.services.discovery_profile_service import DiscoveryProfileService
+        from src.services.company_service import CompanyService
+
+        robot_catalog_service = RobotCatalogService()
+        discovery_service = None
+        current_answers: dict[str, Any] = {}
+
+        async def fetch_robot_catalog() -> list[dict[str, Any]]:
+            return await robot_catalog_service.list_robots(active_only=True)
+
+        async def fetch_user_context() -> tuple[dict[str, Any], Any, dict | None]:
+            """Fetch user context (answers, discovery_service, company)."""
+            nonlocal discovery_service
+            answers: dict[str, Any] = {}
+            company: dict | None = None
+
+            if profile_id:
+                discovery_service = DiscoveryProfileService()
                 company_service = CompanyService()
-                company = await company_service.get_user_company(profile_id)
-                if company and company.get("name"):
-                    current_answers["company_name"] = {
-                        "questionId": 0,  # Synthetic answer from company record
+
+                # Parallel fetch of discovery profile and company
+                profile_task = discovery_service.get_by_profile_id(profile_id)
+                company_task = company_service.get_user_company(profile_id)
+                discovery_profile, company = await asyncio.gather(
+                    profile_task, company_task
+                )
+
+                logger.info(
+                    "Discovery context lookup: profile_id=%s, found=%s, answers_count=%d",
+                    profile_id,
+                    discovery_profile is not None,
+                    len(discovery_profile.get("answers", {})) if discovery_profile else 0,
+                )
+                if discovery_profile:
+                    answers = discovery_profile.get("answers", {})
+                    if answers:
+                        logger.debug("Discovery answers keys: %s", list(answers.keys()))
+                    else:
+                        logger.warning(
+                            "Discovery profile exists but has no answers for profile_id=%s",
+                            profile_id,
+                        )
+
+                # Inject company_name if not present
+                if "company_name" not in answers and company and company.get("name"):
+                    answers["company_name"] = {
+                        "questionId": 0,
                         "value": company["name"],
                         "label": "Company Name",
                         "key": "company_name",
                         "group": "Company",
                     }
-                    logger.info(
-                        "Injected company_name from user's company: %s",
-                        company["name"],
-                    )
-        elif session_id:
-            # Anonymous user - get answers from session
-            session = await self.session_service.get_session_by_id(session_id)
-            logger.info(
-                "Session context lookup: session_id=%s, found=%s, answers_count=%d",
-                session_id,
-                session is not None,
-                len(session.get("answers", {})) if session else 0,
-            )
-            if session:
-                current_answers = session.get("answers", {})
+                    logger.info("Injected company_name from user's company: %s", company["name"])
+
+            elif session_id:
+                session = await self.session_service.get_session_by_id(session_id)
+                logger.info(
+                    "Session context lookup: session_id=%s, found=%s, answers_count=%d",
+                    session_id,
+                    session is not None,
+                    len(session.get("answers", {})) if session else 0,
+                )
+                if session:
+                    answers = session.get("answers", {})
+
+            return answers, discovery_service, company
+
+        # Execute Phase 1 in parallel
+        robot_catalog, (current_answers, discovery_service, _) = await asyncio.gather(
+            fetch_robot_catalog(),
+            fetch_user_context(),
+        )
+
+        phase1_time = time.perf_counter()
+        logger.debug("Discovery Phase 1 (context fetch) took %.2fms", (phase1_time - start_time) * 1000)
 
         # Determine which required questions are still missing
         answered_keys = set(current_answers.keys())
@@ -1097,31 +1128,20 @@ IMPORTANT: Your response must be valid JSON with content (string), chips (array)
             if q["key"] not in answered_keys
         ]
 
-        # Fetch robot catalog for context
-        robot_catalog_service = RobotCatalogService()
-        robot_catalog = await robot_catalog_service.list_robots(active_only=True)
+        # ===== PHASE 2: Parallel store message + fetch recommendations + conversation history =====
+        async def store_user_message() -> dict[str, Any]:
+            return await self.conversation_service.add_message(
+                conversation_id=conversation_id,
+                role=MessageRole.USER,
+                content=user_message,
+                metadata=metadata,
+            )
 
-        # Store user message
-        user_msg_data = await self.conversation_service.add_message(
-            conversation_id=conversation_id,
-            role=MessageRole.USER,
-            content=user_message,
-            metadata=metadata,
-        )
+        async def fetch_recommendations() -> Any:
+            """Fetch recommendations if we have enough answers."""
+            if len(answered_keys) < 4 or not current_answers:
+                return None
 
-        user_msg_response = MessageResponse(
-            id=user_msg_data["id"],
-            conversation_id=user_msg_data["conversation_id"],
-            role=user_msg_data["role"],
-            content=user_msg_data["content"],
-            metadata=user_msg_data.get("metadata", {}),
-            created_at=user_msg_data["created_at"],
-        )
-
-        # Fetch recommendations if we have enough answers (4+ of 6 required questions)
-        # Use persistent database cache for authenticated users to ensure consistent recommendations
-        current_recommendations = None
-        if len(answered_keys) >= 4 and current_answers:
             try:
                 from src.schemas.roi import RecommendationsRequest, RecommendationsResponse
                 from src.services.roi_service import get_roi_service
@@ -1133,45 +1153,66 @@ IMPORTANT: Your response must be valid JSON with content (string), chips (array)
                     )
                     if cached:
                         try:
-                            current_recommendations = RecommendationsResponse(**cached)
                             logger.info("Using cached recommendations for discovery context")
+                            return RecommendationsResponse(**cached)
                         except Exception as e:
                             logger.warning("Failed to parse cached recommendations: %s", e)
 
-                # Fetch fresh recommendations if not cached
-                if current_recommendations is None:
-                    roi_service = get_roi_service()
-                    rec_request = RecommendationsRequest(answers=current_answers, top_k=3)
-                    current_recommendations = await roi_service.get_recommendations(
-                        request=rec_request,
-                        session_id=session_id,
-                        profile_id=profile_id,
-                        use_llm=True,
-                    )
-                    logger.debug("Fetched fresh recommendations for discovery context")
+                # Fetch fresh recommendations
+                roi_service = get_roi_service()
+                rec_request = RecommendationsRequest(answers=current_answers, top_k=3)
+                recommendations = await roi_service.get_recommendations(
+                    request=rec_request,
+                    session_id=session_id,
+                    profile_id=profile_id,
+                    use_llm=True,
+                )
+                logger.debug("Fetched fresh recommendations for discovery context")
 
-                    # Cache recommendations for authenticated users
-                    if profile_id and discovery_service and current_recommendations:
-                        try:
-                            await discovery_service.set_cached_recommendations(
-                                profile_id,
-                                current_answers,
-                                current_recommendations.model_dump(mode="json"),
-                            )
-                        except Exception as cache_err:
-                            logger.warning("Failed to cache recommendations: %s", cache_err)
+                # Cache recommendations for authenticated users (fire and forget)
+                if profile_id and discovery_service and recommendations:
+                    try:
+                        await discovery_service.set_cached_recommendations(
+                            profile_id,
+                            current_answers,
+                            recommendations.model_dump(mode="json"),
+                        )
+                    except Exception as cache_err:
+                        logger.warning("Failed to cache recommendations: %s", cache_err)
+
+                return recommendations
             except Exception as e:
                 logger.warning("Failed to fetch recommendations for context: %s", str(e))
+                return None
+
+        async def fetch_conversation_history() -> list[dict[str, Any]]:
+            return await self.conversation_service.get_recent_messages(
+                conversation_id, limit=self.settings.max_context_messages
+            )
+
+        # Execute Phase 2 in parallel
+        user_msg_data, current_recommendations, recent_messages = await asyncio.gather(
+            store_user_message(),
+            fetch_recommendations(),
+            fetch_conversation_history(),
+        )
+
+        phase2_time = time.perf_counter()
+        logger.debug("Discovery Phase 2 (message + recommendations) took %.2fms", (phase2_time - phase1_time) * 1000)
+
+        user_msg_response = MessageResponse(
+            id=user_msg_data["id"],
+            conversation_id=user_msg_data["conversation_id"],
+            role=user_msg_data["role"],
+            content=user_msg_data["content"],
+            metadata=user_msg_data.get("metadata", {}),
+            created_at=user_msg_data["created_at"],
+        )
 
         # Build discovery-specific prompt with robot catalog, recommendations, and current message
         # Pass current message so agent can recognize inline answers without pre-extraction
         system_prompt = self._build_discovery_prompt(
             current_answers, missing_questions, robot_catalog, current_recommendations, user_message
-        )
-
-        # Get conversation history
-        recent_messages = await self.conversation_service.get_recent_messages(
-            conversation_id, limit=self.settings.max_context_messages
         )
 
         messages: list[dict[str, str]] = [
@@ -1216,7 +1257,7 @@ IMPORTANT: Your response must be valid JSON with content (string), chips (array)
                     )
 
             try:
-                response = self.client.chat.completions.create(
+                response = self.client.chat.create(
                     model=self.settings.openai_model,
                     messages=messages,  # type: ignore[arg-type]
                     response_format=DISCOVERY_RESPONSE_SCHEMA,

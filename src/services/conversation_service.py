@@ -157,7 +157,11 @@ class ConversationService:
         if has_more and rows:
             next_cursor = rows[-1]["created_at"]
 
-        # Get message counts and last message times
+        # Batch load last message times for all conversations (fixes N+1 query)
+        conversation_ids = [row["id"] for row in rows]
+        last_message_times = await self._get_last_message_times_batch(conversation_ids)
+
+        # Build conversation responses
         conversations = []
         for row in rows:
             # Extract message count from nested response
@@ -165,8 +169,8 @@ class ConversationService:
             if row.get("messages") and len(row["messages"]) > 0:
                 message_count = row["messages"][0].get("count", 0)
 
-            # Get last message timestamp
-            last_message_at = await self._get_last_message_time(UUID(row["id"]))
+            # Get last message timestamp from batch result
+            last_message_at = last_message_times.get(row["id"])
 
             conversations.append(
                 ConversationResponse(
@@ -185,8 +189,51 @@ class ConversationService:
 
         return conversations, next_cursor, has_more
 
+    async def _get_last_message_times_batch(
+        self, conversation_ids: list[str]
+    ) -> dict[str, datetime | None]:
+        """Batch load last message timestamps for multiple conversations.
+
+        Uses a single query with aggregation instead of N separate queries.
+
+        Args:
+            conversation_ids: List of conversation IDs to look up.
+
+        Returns:
+            dict: Mapping of conversation_id -> last_message_at datetime.
+        """
+        if not conversation_ids:
+            return {}
+
+        # Query all messages for these conversations, ordered by created_at desc
+        # Then we'll extract the first (most recent) message per conversation
+        response = (
+            self.client.table("messages")
+            .select("conversation_id, created_at")
+            .in_("conversation_id", conversation_ids)
+            .order("created_at", desc=True)
+            .execute()
+        )
+
+        # Build a map of conversation_id -> most recent created_at
+        # Since results are ordered desc, the first occurrence of each
+        # conversation_id is the most recent message
+        result: dict[str, datetime | None] = {cid: None for cid in conversation_ids}
+        seen_conversations: set[str] = set()
+
+        for row in response.data or []:
+            conv_id = row["conversation_id"]
+            if conv_id not in seen_conversations:
+                result[conv_id] = row["created_at"]
+                seen_conversations.add(conv_id)
+
+        return result
+
     async def _get_last_message_time(self, conversation_id: UUID) -> datetime | None:
-        """Get the timestamp of the last message in a conversation."""
+        """Get the timestamp of the last message in a conversation.
+
+        Note: For batch operations, use _get_last_message_times_batch instead.
+        """
         response = (
             self.client.table("messages")
             .select("created_at")
@@ -497,6 +544,68 @@ class ConversationService:
 
         response = self.client.table("conversations").insert(conversation_data).execute()
         return response.data[0], True
+
+    async def create_fresh_for_profile(
+        self,
+        profile_id: UUID,
+        company_id: UUID | None = None,
+        context: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Create a fresh conversation for a user (soft reset).
+
+        Always creates a new conversation, ignoring any existing ones.
+        Old conversations remain accessible via list endpoint.
+
+        Args:
+            profile_id: The user's profile UUID.
+            company_id: Optional company ID for the conversation.
+            context: Optional context to store in metadata.
+
+        Returns:
+            dict: The newly created conversation data.
+        """
+        metadata = context or {}
+        conversation_data = {
+            "profile_id": str(profile_id),
+            "title": self.DEFAULT_TITLE,
+            "phase": ConversationPhase.DISCOVERY.value,
+            "metadata": metadata,
+        }
+
+        if company_id:
+            conversation_data["company_id"] = str(company_id)
+
+        response = self.client.table("conversations").insert(conversation_data).execute()
+        return response.data[0]
+
+    async def create_fresh_for_session(
+        self,
+        session_id: UUID,
+        context: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Create a fresh conversation for a session (soft reset).
+
+        Always creates a new conversation, ignoring any existing ones.
+        Old conversations remain accessible via list endpoint.
+
+        Args:
+            session_id: The session's UUID.
+            context: Optional context to store in metadata.
+
+        Returns:
+            dict: The newly created conversation data.
+        """
+        metadata = context or {}
+        conversation_data = {
+            "session_id": str(session_id),
+            "profile_id": None,
+            "title": self.DEFAULT_TITLE,
+            "phase": ConversationPhase.DISCOVERY.value,
+            "metadata": metadata,
+        }
+
+        response = self.client.table("conversations").insert(conversation_data).execute()
+        return response.data[0]
 
     async def get_or_create_current_for_session(
         self,

@@ -42,10 +42,15 @@ async def stripe_webhook(request: Request) -> dict[str, str]:
     # Get Stripe signature header
     sig_header = request.headers.get("stripe-signature")
     if not sig_header:
+        logger.error("Missing Stripe-Signature header in webhook request")
+        logger.debug("Request headers: %s", dict(request.headers))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Missing Stripe-Signature header",
         )
+
+    logger.info("Received webhook with signature header (length: %d)", len(sig_header))
+    logger.debug("Payload size: %d bytes", len(payload))
 
     service = CheckoutService()
 
@@ -53,7 +58,8 @@ async def stripe_webhook(request: Request) -> dict[str, str]:
         # Verify signature and get event (tries both production and test secrets)
         event, is_test_mode = service.verify_webhook_signature(payload, sig_header)
     except ValueError as e:
-        logger.warning("Invalid webhook signature: %s", str(e))
+        logger.error("Invalid webhook signature: %s", str(e))
+        logger.debug("Signature header: %s...", sig_header[:50] if sig_header else "None")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid signature",

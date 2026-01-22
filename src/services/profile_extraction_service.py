@@ -169,7 +169,7 @@ class ProfileExtractionService:
         )
 
         try:
-            response = self.client.chat.completions.create(
+            response = self.client.chat.create(
                 model=self.EXTRACTION_MODEL,
                 messages=[
                     {"role": "system", "content": EXTRACTION_SYSTEM_PROMPT},

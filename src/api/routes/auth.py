@@ -37,14 +37,14 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 async def signup(data: SignupRequest) -> SignupResponse:
     """Sign up a new user with email and password.
 
-    Creates a new user account in Supabase Auth and sends a verification email.
-    The user must verify their email before they can log in.
+    Creates a new user account in Supabase Auth, a profile, and optionally a company.
+    Sends a verification email - user must verify before they can log in.
 
     Args:
-        data: Signup request with email, password, and optional display name.
+        data: Signup request with email, password, optional display name, and optional company name.
 
     Returns:
-        SignupResponse: User ID, email, and verification email status.
+        SignupResponse: User ID, email, profile_id, company_id, and verification email status.
 
     Raises:
         HTTPException: 400 if signup fails (e.g., email already exists).
@@ -56,6 +56,7 @@ async def signup(data: SignupRequest) -> SignupResponse:
             email=data.email,
             password=data.password,
             display_name=data.display_name,
+            company_name=data.company_name,
         )
         return SignupResponse(**result)
     except ValidationError as e:

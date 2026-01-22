@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from src.api.middleware.error_handler import error_handler_middleware
+from src.api.middleware.latency_logging import latency_logging_with_stats_middleware
 from src.api.middleware.request_size import request_size_limit_middleware
 from src.api.routes import (
     auth,
@@ -113,6 +114,9 @@ def create_app() -> FastAPI:
 
     # Add error handler middleware (outermost - catches all errors)
     app.add_middleware(BaseHTTPMiddleware, dispatch=error_handler_middleware)
+
+    # Add latency logging middleware (tracks request timing)
+    app.add_middleware(BaseHTTPMiddleware, dispatch=latency_logging_with_stats_middleware)
 
     # Add request size limit middleware (rejects oversized requests early)
     app.add_middleware(BaseHTTPMiddleware, dispatch=request_size_limit_middleware)

@@ -139,6 +139,155 @@ async def create_conversation(
     )
 
 
+@router.post(
+    "/reset",
+    response_model=CurrentConversationResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Start a fresh conversation",
+    description="Creates a new conversation, leaving old ones accessible. Use this for 'start over' functionality.",
+)
+async def reset_conversation(
+    auth: DualAuth,
+) -> CurrentConversationResponse:
+    """Start a fresh conversation (soft reset).
+
+    Creates a new conversation while keeping old ones accessible.
+    The new conversation becomes the 'current' one.
+
+    For authenticated users:
+    - Creates new conversation with discovery profile context
+    - Old conversations remain in list
+
+    For anonymous sessions:
+    - Creates new conversation linked to session
+    - Old conversations remain accessible
+
+    Args:
+        auth: Dual auth context (user or session).
+
+    Returns:
+        CurrentConversationResponse: The new conversation with initial greeting.
+    """
+    conversation_service = ConversationService()
+    session_service = SessionService()
+
+    conversation: dict
+    context: dict = {}
+    profile_id: UUID | None = None
+
+    if auth.is_authenticated and auth.user:
+        # Authenticated user flow
+        profile_service = ProfileService()
+        discovery_service = DiscoveryProfileService()
+        company_service = CompanyService()
+
+        # Get user profile
+        profile = await profile_service.get_or_create_profile(
+            auth.user.user_id, auth.user.email
+        )
+        profile_id = UUID(profile["id"])
+
+        # Get discovery profile for context
+        discovery_profile = await discovery_service.get_by_profile_id(profile_id)
+        if discovery_profile:
+            answers = discovery_profile.get("answers", {})
+            if answers:
+                context["discovery_answers"] = answers
+                if "company_name" in answers:
+                    context["company_name"] = answers["company_name"].get("value")
+
+        # Get user's company for context
+        company = await company_service.get_user_company(profile_id)
+        company_id = UUID(company["id"]) if company else None
+        if company:
+            context["company_name"] = company.get("name")
+            context["company_id"] = company["id"]
+
+        # Create fresh conversation
+        conversation = await conversation_service.create_fresh_for_profile(
+            profile_id=profile_id,
+            company_id=company_id,
+            context=context,
+        )
+        logger.info("Created fresh conversation %s for profile %s", conversation["id"], profile_id)
+
+    elif auth.session:
+        # Anonymous session flow
+        session = await session_service.get_session_by_id(auth.session.session_id)
+
+        if session:
+            answers = session.get("answers", {})
+            if answers:
+                context["discovery_answers"] = answers
+                if "company_name" in answers:
+                    context["company_name"] = answers["company_name"].get("value")
+
+        # Create fresh conversation
+        conversation = await conversation_service.create_fresh_for_session(
+            session_id=auth.session.session_id,
+            context=context,
+        )
+
+        # Link new conversation to session
+        await session_service.set_conversation(
+            auth.session.session_id, UUID(conversation["id"])
+        )
+        logger.info("Created fresh conversation %s for session %s", conversation["id"], auth.session.session_id)
+
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required",
+        )
+
+    # Generate initial greeting for the new conversation
+    messages_data = []
+    try:
+        agent_service = AgentService()
+        session_id_for_greeting = auth.session.session_id if auth.session else None
+
+        await agent_service.generate_initial_greeting(
+            conversation_id=UUID(conversation["id"]),
+            session_id=session_id_for_greeting,
+            profile_id=profile_id,
+        )
+
+        # Fetch the greeting message
+        messages_data, _, _ = await conversation_service.get_messages(
+            UUID(conversation["id"]), limit=50
+        )
+    except Exception as e:
+        logger.warning("Failed to generate initial greeting for reset: %s", str(e))
+
+    messages = [
+        {
+            "id": str(m.id),
+            "role": m.role,
+            "content": m.content,
+            "created_at": m.created_at.isoformat() if m.created_at else None,
+            "metadata": m.metadata if hasattr(m, 'metadata') and m.metadata else None,
+        }
+        for m in messages_data
+    ]
+
+    return CurrentConversationResponse(
+        conversation=ConversationResponse(
+            id=conversation["id"],
+            profile_id=conversation.get("profile_id"),
+            company_id=conversation.get("company_id"),
+            title=conversation["title"],
+            phase=conversation["phase"],
+            metadata=conversation.get("metadata", {}),
+            message_count=len(messages_data),
+            last_message_at=messages_data[-1].created_at if messages_data else None,
+            created_at=conversation["created_at"],
+            updated_at=conversation["updated_at"],
+        ),
+        is_new=True,
+        messages=messages,
+    )
+
+
 @router.get(
     "/current",
     response_model=CurrentConversationResponse,

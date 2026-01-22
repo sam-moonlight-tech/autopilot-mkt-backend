@@ -85,6 +85,7 @@ class SignupRequest(BaseModel):
     email: str = Field(..., description="User's email address", min_length=3, max_length=255)
     password: str = Field(..., description="User's password", min_length=8, max_length=100)
     display_name: str | None = Field(default=None, description="User's display name", max_length=255)
+    company_name: str | None = Field(default=None, description="Company name to create", max_length=255)
 
 
 class SignupResponse(BaseModel):
@@ -96,6 +97,8 @@ class SignupResponse(BaseModel):
     email: str = Field(description="User's email address")
     message: str = Field(description="Success message")
     email_sent: bool = Field(description="Whether verification email was sent")
+    profile_id: str | None = Field(default=None, description="Created profile ID")
+    company_id: str | None = Field(default=None, description="Created company ID")
 
 
 class VerifyEmailRequest(BaseModel):

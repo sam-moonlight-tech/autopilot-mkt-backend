@@ -8,7 +8,6 @@ import logging
 import time
 from dataclasses import dataclass, field
 from hashlib import sha256
-from threading import Lock
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -49,7 +48,7 @@ class RecommendationCacheConfig:
 
 
 class RecommendationCache:
-    """Thread-safe in-memory cache for robot recommendations with TTL."""
+    """Async-safe in-memory cache for robot recommendations with TTL."""
 
     def __init__(self, config: RecommendationCacheConfig | None = None) -> None:
         """Initialize the recommendation cache.
@@ -59,7 +58,7 @@ class RecommendationCache:
         """
         self.config = config or RecommendationCacheConfig()
         self._cache: dict[str, CacheEntry] = {}
-        self._lock = Lock()
+        self._lock = asyncio.Lock()
         self._cleanup_task: asyncio.Task | None = None
 
     async def start_cleanup_task(self) -> None:
@@ -83,7 +82,7 @@ class RecommendationCache:
         """Background loop to cleanup expired entries."""
         while True:
             await asyncio.sleep(self.config.cleanup_interval_seconds)
-            count = self.cleanup()
+            count = await self.cleanup()
             if count > 0:
                 logger.debug("Recommendation cache cleaned up %d expired entries", count)
 
@@ -108,7 +107,7 @@ class RecommendationCache:
         json_str = json.dumps(simplified, sort_keys=True)
         return sha256(json_str.encode()).hexdigest()[:16]
 
-    def get(self, answers: dict) -> "RecommendationsResponse | None":
+    async def get(self, answers: dict) -> "RecommendationsResponse | None":
         """Get cached recommendations if available and not expired.
 
         Args:
@@ -119,7 +118,7 @@ class RecommendationCache:
         """
         key = self._generate_key(answers)
 
-        with self._lock:
+        async with self._lock:
             entry = self._cache.get(key)
             if entry is None:
                 logger.debug("Cache miss for key %s", key)
@@ -133,7 +132,7 @@ class RecommendationCache:
             logger.debug("Cache hit for key %s", key)
             return entry.value
 
-    def set(self, answers: dict, response: "RecommendationsResponse") -> None:
+    async def set(self, answers: dict, response: "RecommendationsResponse") -> None:
         """Cache recommendations with TTL.
 
         Args:
@@ -143,7 +142,7 @@ class RecommendationCache:
         key = self._generate_key(answers)
         expires_at = time.time() + self.config.ttl_seconds
 
-        with self._lock:
+        async with self._lock:
             # Evict oldest entries if cache is full
             if len(self._cache) >= self.config.max_size:
                 self._evict_oldest()
@@ -169,37 +168,37 @@ class RecommendationCache:
                 del self._cache[key]
             logger.debug("Evicted %d entries from recommendation cache", to_remove)
 
-    def cleanup(self) -> int:
+    async def cleanup(self) -> int:
         """Remove all expired entries.
 
         Returns:
             Number of entries removed.
         """
-        with self._lock:
+        async with self._lock:
             expired_keys = [k for k, v in self._cache.items() if v.is_expired()]
             for key in expired_keys:
                 del self._cache[key]
             return len(expired_keys)
 
-    def clear(self) -> int:
+    async def clear(self) -> int:
         """Clear all cached entries.
 
         Returns:
             Number of entries cleared.
         """
-        with self._lock:
+        async with self._lock:
             count = len(self._cache)
             self._cache.clear()
             logger.info("Cleared %d entries from recommendation cache", count)
             return count
 
-    def get_stats(self) -> dict:
+    async def get_stats(self) -> dict:
         """Get cache statistics for monitoring.
 
         Returns:
             Dictionary with cache stats.
         """
-        with self._lock:
+        async with self._lock:
             valid_count = sum(1 for v in self._cache.values() if not v.is_expired())
             return {
                 "total_entries": len(self._cache),

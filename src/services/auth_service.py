@@ -29,16 +29,20 @@ class AuthService:
         email: str,
         password: str,
         display_name: str | None = None,
+        company_name: str | None = None,
     ) -> dict[str, Any]:
         """Sign up a new user with email and password.
+
+        Creates the auth user, profile, and optionally a company atomically.
 
         Args:
             email: User's email address.
             password: User's password.
             display_name: Optional display name.
+            company_name: Optional company name to create.
 
         Returns:
-            dict: Signup response with user_id, email, and email_sent status.
+            dict: Signup response with user_id, email, profile_id, company_id, and email_sent status.
 
         Raises:
             ValidationError: If signup fails (e.g., email already exists).
@@ -67,11 +71,37 @@ class AuthService:
             user = response.user
             logger.info("User signed up: %s", user.id)
 
+            # Create profile for the user
+            from src.services.profile_service import ProfileService
+            profile_service = ProfileService()
+            profile = await profile_service.get_or_create_profile(
+                user_id=UUID(str(user.id)),
+                email=email,
+                display_name=display_name,
+            )
+            profile_id = profile["id"]
+            logger.info("Profile created for user %s: %s", user.id, profile_id)
+
+            # Create company if company_name provided
+            company_id = None
+            if company_name:
+                from src.services.company_service import CompanyService
+                from src.schemas.company import CompanyCreate
+                company_service = CompanyService()
+                company = await company_service.create_company(
+                    data=CompanyCreate(name=company_name),
+                    owner_profile_id=UUID(profile_id),
+                )
+                company_id = company["id"]
+                logger.info("Company created for user %s: %s", user.id, company_id)
+
             return {
                 "user_id": str(user.id),
                 "email": user.email or email,
                 "email_sent": response.session is None,  # Email sent if no session (requires verification)
                 "message": "User created successfully. Please check your email to verify your account.",
+                "profile_id": profile_id,
+                "company_id": company_id,
             }
 
         except Exception as e:

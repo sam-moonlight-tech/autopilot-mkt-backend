@@ -140,7 +140,7 @@ class TestGenerateResponse:
         mock_response = MagicMock()
         mock_response.choices = [MagicMock()]
         mock_response.choices[0].message.content = "Agent response"
-        mock_openai.chat.completions.create.return_value = mock_response
+        mock_openai.chat.create.return_value = mock_response
 
         conversation = {
             "id": "770e8400-e29b-41d4-a716-446655440000",

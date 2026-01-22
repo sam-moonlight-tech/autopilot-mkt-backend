@@ -4,6 +4,8 @@
 # 
 # Environment variables:
 #   USE_SECRETS: Set to "true" to use Secret Manager (default: false, uses env vars from .env)
+#   CORS_ORIGINS: Can be set as environment variable to override .env value (always set as env var, not secret)
+#   AUTH_REDIRECT_URL: Can be set as environment variable to override .env value (always set as env var, not secret)
 #   MIN_INSTANCES, MAX_INSTANCES, CPU, MEMORY, TIMEOUT, CONCURRENCY: Cloud Run configuration
 
 set -e
@@ -67,19 +69,52 @@ fi
 echo "📦 Building container image..."
 gcloud builds submit --tag "${IMAGE_NAME}" --project "${PROJECT_ID}" --region="${REGION}"
 
-# Build base environment variables list
+# List of variables that should NEVER be set as env vars when using secrets
+# These are handled via Secret Manager and must not be overwritten
+SECRET_VARIABLES="SUPABASE_URL|SUPABASE_SECRET_KEY|SUPABASE_SIGNING_KEY_JWK|OPENAI_API_KEY|PINECONE_API_KEY|PINECONE_ENVIRONMENT|STRIPE_SECRET_KEY|STRIPE_WEBHOOK_SECRET|STRIPE_SECRET_KEY_TEST|STRIPE_WEBHOOK_SECRET_TEST|RESEND_API_KEY"
+
+# Build base environment variables list (only non-secret vars)
 BASE_ENV_VARS="APP_ENV=production,DEBUG=false,HOST=0.0.0.0"
+
+# Variables to handle separately (values with commas need special handling)
+CORS_ORIGINS_VALUE=""
+AUTH_REDIRECT_URL_VALUE=""
 
 # Add secrets or environment variables
 if [ "${USE_SECRETS}" = "true" ]; then
   echo "🔐 Using Secret Manager for sensitive values..."
-  # AUTH_REDIRECT_URL is typically not a secret, add it as env var if present in .env
-  if [ -f .env ] && grep -q "^AUTH_REDIRECT_URL=" .env; then
-    AUTH_REDIRECT_VALUE=$(grep "^AUTH_REDIRECT_URL=" .env | cut -d '=' -f2- | sed -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//")
-    BASE_ENV_VARS="${BASE_ENV_VARS},AUTH_REDIRECT_URL=${AUTH_REDIRECT_VALUE}"
+  echo "   ℹ️  Only non-secret variables will be set as env vars to avoid overwriting secrets"
+  # AUTH_REDIRECT_URL and CORS_ORIGINS are NOT secrets, always add them as env vars
+  # They can be provided via environment variable (takes precedence) or from .env file
+  
+  # Handle AUTH_REDIRECT_URL (not a secret, safe to set as env var)
+  if [ -n "${AUTH_REDIRECT_URL}" ]; then
+    # Use value from environment variable if set
+    AUTH_REDIRECT_URL_VALUE="${AUTH_REDIRECT_URL}"
+    BASE_ENV_VARS="${BASE_ENV_VARS},AUTH_REDIRECT_URL=${AUTH_REDIRECT_URL}"
+    echo "   ✓ Using AUTH_REDIRECT_URL from environment variable"
+  elif [ -f .env ] && grep -q "^AUTH_REDIRECT_URL=" .env; then
+    # Fall back to .env file
+    AUTH_REDIRECT_URL_VALUE=$(grep "^AUTH_REDIRECT_URL=" .env | cut -d '=' -f2- | sed -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//")
+    BASE_ENV_VARS="${BASE_ENV_VARS},AUTH_REDIRECT_URL=${AUTH_REDIRECT_URL_VALUE}"
+    echo "   ✓ Using AUTH_REDIRECT_URL from .env file"
   else
-    echo "⚠️  Warning: AUTH_REDIRECT_URL not found in .env. This is a required field!"
-    echo "   You must set it manually or add it to your .env file."
+    echo "⚠️  Warning: AUTH_REDIRECT_URL not found in environment or .env. This is a required field!"
+    echo "   Set it via: export AUTH_REDIRECT_URL='https://...' or add to .env file"
+  fi
+  
+  # Handle CORS_ORIGINS (not a secret, safe to set as env var)
+  if [ -n "${CORS_ORIGINS}" ]; then
+    # Use value from environment variable if set
+    CORS_ORIGINS_VALUE="${CORS_ORIGINS}"
+    echo "   ✓ Using CORS_ORIGINS from environment variable"
+  elif [ -f .env ] && grep -q "^CORS_ORIGINS=" .env; then
+    # Fall back to .env file
+    CORS_ORIGINS_VALUE=$(grep "^CORS_ORIGINS=" .env | cut -d '=' -f2- | sed -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//")
+    echo "   ✓ Using CORS_ORIGINS from .env file"
+  else
+    echo "⚠️  Warning: CORS_ORIGINS not found in environment or .env. CORS may not work correctly!"
+    echo "   Set it via: export CORS_ORIGINS='https://example.com,...' or add to .env file"
   fi
 else
   echo "📝 Using environment variables from .env file..."
@@ -97,8 +132,12 @@ else
       
       # Add to env vars if it's one of our required variables
       case "$key" in
-        SUPABASE_URL|SUPABASE_SECRET_KEY|SUPABASE_SIGNING_KEY_JWK|OPENAI_API_KEY|PINECONE_API_KEY|PINECONE_ENVIRONMENT|OPENAI_MODEL|PINECONE_INDEX_NAME|EMBEDDING_MODEL|MAX_CONTEXT_MESSAGES|CORS_ORIGINS|AUTH_REDIRECT_URL|STRIPE_SECRET_KEY|STRIPE_WEBHOOK_SECRET|STRIPE_PUBLISHABLE_KEY|STRIPE_SECRET_KEY_TEST|STRIPE_WEBHOOK_SECRET_TEST)
+        SUPABASE_URL|SUPABASE_SECRET_KEY|SUPABASE_SIGNING_KEY_JWK|OPENAI_API_KEY|PINECONE_API_KEY|PINECONE_ENVIRONMENT|OPENAI_MODEL|PINECONE_INDEX_NAME|EMBEDDING_MODEL|MAX_CONTEXT_MESSAGES|AUTH_REDIRECT_URL|STRIPE_SECRET_KEY|STRIPE_WEBHOOK_SECRET|STRIPE_PUBLISHABLE_KEY|STRIPE_SECRET_KEY_TEST|STRIPE_WEBHOOK_SECRET_TEST|RESEND_API_KEY)
           ENV_VARS="${ENV_VARS},${key}=${value}"
+          ;;
+        CORS_ORIGINS)
+          # CORS_ORIGINS contains commas, handle separately
+          CORS_ORIGINS_VALUE="${value}"
           ;;
       esac
     done < .env
@@ -111,30 +150,101 @@ else
   fi
 fi
 
-# Prepare deployment command
-DEPLOY_CMD="gcloud run deploy ${SERVICE_NAME} \
-  --image ${IMAGE_NAME} \
-  --platform managed \
-  --region ${REGION} \
-  --project ${PROJECT_ID} \
-  --allow-unauthenticated \
-  --min-instances ${MIN_INSTANCES} \
-  --max-instances ${MAX_INSTANCES} \
-  --cpu ${CPU} \
-  --memory ${MEMORY} \
-  --timeout ${TIMEOUT} \
-  --concurrency ${CONCURRENCY} \
-  --port 8080 \
-  --set-env-vars ${BASE_ENV_VARS}"
+# Helper function to check if a variable is a secret
+is_secret_var() {
+  local var_name="$1"
+  echo "${SECRET_VARIABLES}" | grep -qE "\\b${var_name}\\b"
+}
+
+# If CORS_ORIGINS contains commas, create a YAML file for env vars
+# Otherwise use standard --set-env-vars
+if [ -n "${CORS_ORIGINS_VALUE}" ]; then
+  # Create temporary YAML file for env vars (handles commas properly)
+  # IMPORTANT: Only include non-secret variables to avoid overwriting secrets
+  ENV_VARS_FILE=$(mktemp)
+  cat > "${ENV_VARS_FILE}" <<EOF
+APP_ENV: production
+DEBUG: "false"
+HOST: 0.0.0.0
+EOF
+  
+  # Add AUTH_REDIRECT_URL if we have it (not a secret)
+  if [ -n "${AUTH_REDIRECT_URL_VALUE}" ]; then
+    echo "AUTH_REDIRECT_URL: \"${AUTH_REDIRECT_URL_VALUE}\"" >> "${ENV_VARS_FILE}"
+  fi
+  
+  # Add CORS_ORIGINS with proper YAML quoting (not a secret)
+  echo "CORS_ORIGINS: \"${CORS_ORIGINS_VALUE}\"" >> "${ENV_VARS_FILE}"
+  
+  # If not using secrets, add other vars from BASE_ENV_VARS
+  # But still skip any secret variables just to be safe
+  if [ "${USE_SECRETS}" != "true" ]; then
+    # Parse and add other variables from BASE_ENV_VARS that aren't already included
+    IFS=',' read -ra VARS <<< "${BASE_ENV_VARS}"
+    for var in "${VARS[@]}"; do
+      key=$(echo "$var" | cut -d'=' -f1)
+      value=$(echo "$var" | cut -d'=' -f2-)
+      # Skip if already added or if it's a secret variable (safety check)
+      if [ "$key" != "APP_ENV" ] && [ "$key" != "DEBUG" ] && [ "$key" != "HOST" ] && \
+         [ "$key" != "AUTH_REDIRECT_URL" ] && [ "$key" != "CORS_ORIGINS" ] && \
+         ! is_secret_var "$key"; then
+        echo "${key}: \"${value}\"" >> "${ENV_VARS_FILE}"
+      fi
+    done
+  fi
+  
+  # Prepare deployment command with YAML file
+  DEPLOY_CMD="gcloud run deploy ${SERVICE_NAME} \
+    --image ${IMAGE_NAME} \
+    --platform managed \
+    --region ${REGION} \
+    --project ${PROJECT_ID} \
+    --allow-unauthenticated \
+    --min-instances ${MIN_INSTANCES} \
+    --max-instances ${MAX_INSTANCES} \
+    --cpu ${CPU} \
+    --memory ${MEMORY} \
+    --timeout ${TIMEOUT} \
+    --concurrency ${CONCURRENCY} \
+    --port 8080 \
+    --env-vars-file ${ENV_VARS_FILE}"
+else
+  # No CORS_ORIGINS with commas, use standard approach
+  DEPLOY_CMD="gcloud run deploy ${SERVICE_NAME} \
+    --image ${IMAGE_NAME} \
+    --platform managed \
+    --region ${REGION} \
+    --project ${PROJECT_ID} \
+    --allow-unauthenticated \
+    --min-instances ${MIN_INSTANCES} \
+    --max-instances ${MAX_INSTANCES} \
+    --cpu ${CPU} \
+    --memory ${MEMORY} \
+    --timeout ${TIMEOUT} \
+    --concurrency ${CONCURRENCY} \
+    --port 8080 \
+    --set-env-vars ${BASE_ENV_VARS}"
+fi
+
+# Clean up temporary file after deployment
+cleanup_env_file() {
+  if [ -n "${ENV_VARS_FILE:-}" ] && [ -f "${ENV_VARS_FILE}" ]; then
+    rm -f "${ENV_VARS_FILE}"
+  fi
+}
+trap cleanup_env_file EXIT
 
 # Add secrets if using Secret Manager
 if [ "${USE_SECRETS}" = "true" ]; then
-  DEPLOY_CMD="${DEPLOY_CMD} --update-secrets=SUPABASE_URL=supabase-url:latest,SUPABASE_SECRET_KEY=supabase-secret-key:latest,SUPABASE_SIGNING_KEY_JWK=supabase-signing-key-jwk:latest,OPENAI_API_KEY=openai-api-key:latest,PINECONE_API_KEY=pinecone-api-key:latest,PINECONE_ENVIRONMENT=pinecone-environment:latest,STRIPE_SECRET_KEY=stripe-secret-key:latest,STRIPE_WEBHOOK_SECRET=stripe-webhook-secret:latest,STRIPE_PUBLISHABLE_KEY=stripe-publishable-key:latest,STRIPE_SECRET_KEY_TEST=stripe-secret-key-test:latest,STRIPE_WEBHOOK_SECRET_TEST=stripe-webhook-secret-test:latest"
+  DEPLOY_CMD="${DEPLOY_CMD} --update-secrets=SUPABASE_URL=supabase-url:latest,SUPABASE_SECRET_KEY=supabase-secret-key:latest,SUPABASE_SIGNING_KEY_JWK=supabase-signing-key-jwk:latest,OPENAI_API_KEY=openai-api-key:latest,PINECONE_API_KEY=pinecone-api-key:latest,PINECONE_ENVIRONMENT=pinecone-environment:latest,STRIPE_SECRET_KEY=stripe-secret-key:latest,STRIPE_WEBHOOK_SECRET=stripe-webhook-secret:latest,STRIPE_PUBLISHABLE_KEY=stripe-publishable-key:latest,STRIPE_SECRET_KEY_TEST=stripe-secret-key-test:latest,STRIPE_WEBHOOK_SECRET_TEST=stripe-webhook-secret-test:latest,RESEND_API_KEY=resend-api-key:latest"
 fi
 
 # Deploy to Cloud Run
 echo "🚢 Deploying to Cloud Run..."
 eval "${DEPLOY_CMD}"
+
+# Cleanup will happen via trap, but we can also clean up explicitly
+cleanup_env_file
 
 echo ""
 echo "✅ Deployment complete!"

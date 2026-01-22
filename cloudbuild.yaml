@@ -22,6 +22,22 @@ steps:
       - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_SERVICE_NAME}"
     id: "push-image"
 
+  # Build environment variables string
+  - name: "bash"
+    entrypoint: "bash"
+    args:
+      - "-c"
+      - |
+        ENV_VARS="APP_ENV=production,DEBUG=false,HOST=0.0.0.0"
+        if [ -n "$${_CORS_ORIGINS}" ]; then
+          ENV_VARS="$${ENV_VARS},CORS_ORIGINS=$${_CORS_ORIGINS}"
+        fi
+        if [ -n "$${_AUTH_REDIRECT_URL}" ]; then
+          ENV_VARS="$${ENV_VARS},AUTH_REDIRECT_URL=$${_AUTH_REDIRECT_URL}"
+        fi
+        echo "$${ENV_VARS}" > /workspace/env_vars.txt
+    id: "build-env-vars"
+
   # Deploy container image to Cloud Run
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
     entrypoint: gcloud
@@ -51,9 +67,10 @@ steps:
       - "--port"
       - "8080"
       - "--set-env-vars"
-      - "APP_ENV=production,DEBUG=false,HOST=0.0.0.0"
+      - $(cat /workspace/env_vars.txt)
       # Note: Additional required environment variables and secrets must be configured:
-      # - AUTH_REDIRECT_URL (required, set via --update-env-vars or substitution)
+      # - CORS_ORIGINS (set via _CORS_ORIGINS substitution variable, e.g., --substitutions=_CORS_ORIGINS="https://example.com")
+      # - AUTH_REDIRECT_URL (set via _AUTH_REDIRECT_URL substitution variable)
       # - SUPABASE_URL, SUPABASE_SECRET_KEY, SUPABASE_SIGNING_KEY_JWK (secrets)
       # - OPENAI_API_KEY, PINECONE_API_KEY, PINECONE_ENVIRONMENT (secrets)
       # These should be set via Cloud Run service configuration or via --update-secrets/--update-env-vars flags
@@ -70,6 +87,8 @@ substitutions:
   _MEMORY: "512Mi"
   _TIMEOUT: "300"
   _CONCURRENCY: "80"
+  # Note: _CORS_ORIGINS and _AUTH_REDIRECT_URL should be provided when triggering builds
+  # Example: gcloud builds submit --substitutions=_CORS_ORIGINS="https://example.com",_AUTH_REDIRECT_URL="https://example.com/auth"
 
 # Images to be pushed to Artifact Registry
 images:

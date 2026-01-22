@@ -7,7 +7,6 @@ import logging
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from threading import Lock
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -100,12 +99,12 @@ class TokenBudgetError(Exception):
 
 
 class InMemoryTokenBudgetStorage:
-    """Thread-safe in-memory token budget storage with automatic cleanup."""
+    """Async-safe in-memory token budget storage with automatic cleanup."""
 
     def __init__(self, config: TokenBudgetConfig | None = None) -> None:
         self.config = config or TokenBudgetConfig()
         self._storage: dict[str, TokenUsageRecord] = {}
-        self._lock = Lock()
+        self._lock = asyncio.Lock()
         self._cleanup_task: asyncio.Task | None = None
 
     async def start_cleanup_task(self) -> None:
@@ -155,7 +154,7 @@ class InMemoryTokenBudgetStorage:
             else self.config.daily_limit_anonymous
         )
 
-        with self._lock:
+        async with self._lock:
             if key not in self._storage:
                 self._storage[key] = TokenUsageRecord()
 
@@ -181,7 +180,7 @@ class InMemoryTokenBudgetStorage:
         Returns:
             Tuple of (total_used_today, remaining_estimate).
         """
-        with self._lock:
+        async with self._lock:
             if key not in self._storage:
                 self._storage[key] = TokenUsageRecord()
 
@@ -195,7 +194,7 @@ class InMemoryTokenBudgetStorage:
         current_day_start = TokenUsageRecord._get_day_start()
         removed = 0
 
-        with self._lock:
+        async with self._lock:
             keys_to_remove = []
             for key, record in self._storage.items():
                 if record.day_start < current_day_start:
@@ -207,9 +206,9 @@ class InMemoryTokenBudgetStorage:
 
         return removed
 
-    def get_stats(self) -> dict:
+    async def get_stats(self) -> dict:
         """Get storage statistics for monitoring."""
-        with self._lock:
+        async with self._lock:
             total_tokens = sum(r.tokens_used for r in self._storage.values())
             return {
                 "active_trackers": len(self._storage),
@@ -220,7 +219,7 @@ class InMemoryTokenBudgetStorage:
                 },
             }
 
-    def get_usage(self, key: str, is_authenticated: bool) -> dict:
+    async def get_usage(self, key: str, is_authenticated: bool) -> dict:
         """Get usage stats for a specific key."""
         limit = (
             self.config.daily_limit_authenticated
@@ -228,7 +227,7 @@ class InMemoryTokenBudgetStorage:
             else self.config.daily_limit_anonymous
         )
 
-        with self._lock:
+        async with self._lock:
             if key not in self._storage:
                 return {
                     "tokens_used": 0,

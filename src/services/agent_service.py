@@ -16,7 +16,7 @@ from src.models.conversation import ConversationPhase
 from src.models.message import MessageRole
 from src.schemas.message import MessageResponse
 from src.services.conversation_service import ConversationService
-from src.services.extraction_constants import REQUIRED_QUESTIONS, REQUIRED_QUESTION_KEYS
+from src.services.extraction_constants import REQUIRED_QUESTIONS, REQUIRED_QUESTION_KEYS, DISCOVERY_QUESTIONS
 from src.services.rag_service import RAGService, get_rag_service
 from src.services.robot_catalog_service import RobotCatalogService
 from src.services.sales_knowledge_service import SalesKnowledgeService, get_sales_knowledge_service
@@ -24,10 +24,79 @@ from src.services.session_service import SessionService
 
 logger = logging.getLogger(__name__)
 
+
+def _sanitize_answer_value(ans: Any) -> str:
+    """Sanitize an answer value for safe inclusion in prompts.
+
+    Handles various input types and ensures clean, single-line output.
+    Converts boolean-like strings ("true"/"false") to readable "Yes"/"No".
+
+    Args:
+        ans: Answer data - can be dict, string, or other types
+
+    Returns:
+        str: Sanitized value safe for prompt inclusion
+    """
+    # Extract value from dict
+    if isinstance(ans, dict):
+        value = ans.get("value", "unknown")
+    else:
+        value = ans
+
+    # Convert to string if needed
+    if not isinstance(value, str):
+        value = str(value) if value is not None else "unknown"
+
+    # Convert boolean-like strings to readable format
+    value_lower = value.lower().strip()
+    if value_lower == "true":
+        value = "Yes"
+    elif value_lower == "false":
+        value = "No"
+
+    # Sanitize: remove newlines and limit length to prevent prompt injection
+    value = value.replace("\n", " ").replace("\r", " ").strip()
+    if len(value) > 200:
+        value = value[:197] + "..."
+
+    return value if value else "unknown"
+
+
 # Cache for sales knowledge per conversation+phase (maxsize limits memory usage)
 # Key: (conversation_id, phase) -> sales_knowledge_text
 _sales_knowledge_cache: dict[tuple[str, str], str] = {}
 _SALES_KNOWLEDGE_CACHE_MAX_SIZE = 1000  # Limit cache to prevent memory bloat
+
+
+def _detect_question_from_chips(chips: list[str] | None) -> str | None:
+    """Detect which discovery question was asked based on the chips provided.
+
+    This helps track which questions have been asked to prevent re-asking.
+
+    Args:
+        chips: List of chip options from the agent response.
+
+    Returns:
+        The question key if detected, None otherwise.
+    """
+    if not chips:
+        return None
+
+    # Map chips to their corresponding questions
+    for q in REQUIRED_QUESTIONS:
+        if q.get("chips") and set(chips) == set(q["chips"]):
+            return q["key"]
+
+    # Partial match - if most chips match, it's likely that question
+    for q in REQUIRED_QUESTIONS:
+        if q.get("chips"):
+            q_chips = set(q["chips"])
+            provided_chips = set(chips)
+            # If 80%+ of chips match, consider it the same question
+            if len(q_chips & provided_chips) >= len(q_chips) * 0.8:
+                return q["key"]
+
+    return None
 
 
 def clear_sales_knowledge_cache(conversation_id: UUID | None = None) -> int:
@@ -482,6 +551,7 @@ class AgentService:
         robot_catalog: list[dict[str, Any]],
         current_recommendations: Any = None,
         current_user_message: str | None = None,
+        last_question_asked: str | None = None,
     ) -> str:
         """Build an intelligent discovery system prompt.
 
@@ -494,18 +564,23 @@ class AgentService:
             robot_catalog: List of available robots in the catalog.
             current_recommendations: Optional RecommendationsResponse with current recs.
             current_user_message: The user's current message (to recognize inline answers).
+            last_question_asked: The key of the last question asked (to avoid re-asking).
 
         Returns:
             str: The system prompt for discovery.
         """
-        # Format what we already know
+        # Format what we already know (with sanitization to prevent "true"/"false" and formatting issues)
         if current_answers:
             answered_summary = "\n".join(
-                f"- {key}: {ans.get('value', 'unknown')}"
+                f"- {key}: {_sanitize_answer_value(ans)}"
                 for key, ans in current_answers.items()
             )
         else:
             answered_summary = "None yet - this is a new conversation."
+
+        # Filter out the last asked question from missing questions to prevent re-asking
+        if last_question_asked:
+            missing_questions = [q for q in missing_questions if q["key"] != last_question_asked]
 
         # Format what we still need to learn
         if missing_questions:
@@ -545,6 +620,15 @@ For example, if user says "We're Pickleball One, a pickleball club" - they've an
 Do NOT ask about information the user just provided. Acknowledge what they shared and move to the NEXT missing topic.
 """
 
+        # Add context about last question asked
+        last_question_context = ""
+        if last_question_asked:
+            last_question_context = f"""
+IMPORTANT: You just asked about "{last_question_asked}" in your previous message.
+Do NOT ask about {last_question_asked} again. The user's response above is likely answering that question.
+Move on to the NEXT topic in the "STILL NEED TO LEARN" list.
+"""
+
         return f"""You are Autopilot, a premium robotics procurement consultant.
 
 AVAILABLE ROBOT CATALOG (ONLY recommend from this list):
@@ -552,7 +636,7 @@ AVAILABLE ROBOT CATALOG (ONLY recommend from this list):
 
 WHAT YOU KNOW ABOUT THIS CUSTOMER (from previous messages):
 {answered_summary}
-{current_message_context}
+{current_message_context}{last_question_context}
 STILL NEED TO LEARN ({remaining_count} remaining):
 {missing_summary}
 {recommendations_context}
@@ -560,11 +644,12 @@ INSTRUCTIONS:
 1. FIRST, extract any new information from the user's current message - acknowledge what they shared
 2. If there are STILL missing questions after considering the current message, weave ONE into your response
 3. NEVER ask about something the user just told you in this message - move to the next unknown topic
-4. Set ready_for_roi=true ONLY when you have answers for most required questions (4+ of 6)
-5. Return chips matching the question you're asking, or empty array for open-ended questions
-6. When discussing specific robots, ONLY mention robots from the AVAILABLE ROBOT CATALOG above
-7. NEVER make up or hallucinate robot models - if asked about specific models, only reference the catalog
-8. If recommendations are available, reference them when discussing robot options
+4. NEVER re-ask a question you just asked - the user's message is likely the answer
+5. Set ready_for_roi=true ONLY when you have answers for most required questions (5+ of 7)
+6. Return chips matching the question you're asking, or empty array for open-ended questions
+7. When discussing specific robots, ONLY mention robots from the AVAILABLE ROBOT CATALOG above
+8. NEVER make up or hallucinate robot models - if asked about specific models, only reference the catalog
+9. If recommendations are available, reference them when discussing robot options
 
 TONE: Premium, consultative, efficient. Like a senior consultant who values the client's time.
 Don't be robotic or interrogative. If user gives rich context, adapt and skip redundant questions.
@@ -656,8 +741,9 @@ IMPORTANT: Your response must be valid JSON with content (string), chips (array)
             result = {"content": content, "chips": chips, "ready_for_roi": False}
         else:
             try:
+                # Use fast model for greetings to reduce latency (3-5s -> ~1s)
                 response = self.client.chat.create(
-                    model=self.settings.openai_model,
+                    model=self.settings.openai_model_fast,
                     messages=[
                         {"role": "system", "content": greeting_prompt},
                         {"role": "user", "content": "Generate initial greeting"},
@@ -697,7 +783,7 @@ IMPORTANT: Your response must be valid JSON with content (string), chips (array)
             role=MessageRole.ASSISTANT,
             content=result["content"],
             metadata={
-                "model": self.settings.openai_model,
+                "model": self.settings.openai_model_fast,  # Uses fast model for greetings
                 "chips": result["chips"],
                 "ready_for_roi": result.get("ready_for_roi", False),
                 "is_initial_greeting": True,
@@ -1209,10 +1295,27 @@ IMPORTANT: Your response must be valid JSON with content (string), chips (array)
             created_at=user_msg_data["created_at"],
         )
 
+        # Detect what question was asked in the last assistant message to prevent re-asking
+        last_question_asked: str | None = None
+        for msg in reversed(recent_messages):
+            if msg.get("role") == "assistant":
+                msg_metadata = msg.get("metadata", {})
+                if msg_metadata:
+                    # First try the stored question_asked field (most reliable)
+                    last_question_asked = msg_metadata.get("question_asked")
+                    # Fall back to detecting from chips if not stored
+                    if not last_question_asked:
+                        last_chips = msg_metadata.get("chips", [])
+                        last_question_asked = _detect_question_from_chips(last_chips)
+                    if last_question_asked:
+                        logger.debug("Last question asked: %s", last_question_asked)
+                break
+
         # Build discovery-specific prompt with robot catalog, recommendations, and current message
         # Pass current message so agent can recognize inline answers without pre-extraction
+        # Pass last_question_asked to prevent re-asking the same question
         system_prompt = self._build_discovery_prompt(
-            current_answers, missing_questions, robot_catalog, current_recommendations, user_message
+            current_answers, missing_questions, robot_catalog, current_recommendations, user_message, last_question_asked
         )
 
         messages: list[dict[str, str]] = [
@@ -1300,6 +1403,9 @@ IMPORTANT: Your response must be valid JSON with content (string), chips (array)
                     "ready_for_roi": False,
                 }
 
+        # Detect which question is being asked in this response (for tracking)
+        question_asked = _detect_question_from_chips(result.get("chips"))
+
         # Store agent response with chips in metadata
         agent_msg_data = await self.conversation_service.add_message(
             conversation_id=conversation_id,
@@ -1309,6 +1415,7 @@ IMPORTANT: Your response must be valid JSON with content (string), chips (array)
                 "model": self.settings.openai_model,
                 "chips": result["chips"],
                 "ready_for_roi": result["ready_for_roi"],
+                "question_asked": question_asked,  # Track which question was asked
             },
         )
 

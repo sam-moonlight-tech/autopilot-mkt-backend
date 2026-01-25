@@ -49,7 +49,8 @@ class Settings(BaseSettings):
 
     # OpenAI
     openai_api_key: str = Field(..., description="OpenAI API key")
-    openai_model: str = Field(default="gpt-4o", description="OpenAI model to use")
+    openai_model: str = Field(default="gpt-4o", description="OpenAI model to use for main conversations")
+    openai_model_fast: str = Field(default="gpt-4o-mini", description="Fast OpenAI model for simple tasks (greetings, etc)")
     max_context_messages: int = Field(default=20, description="Max messages to include in context")
     mock_openai: bool | None = Field(default=None, description="Mock OpenAI responses for local testing (saves tokens). Auto-enabled in development, disabled in production.")
 

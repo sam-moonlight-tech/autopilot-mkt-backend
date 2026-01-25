@@ -60,8 +60,13 @@ REQUIRED_QUESTIONS = [
         "chips": ["Vacuum", "Sweep", "Mop", "Other"],
     },
     {
+        "key": "frequency",
+        "question": "How often do you clean the facility?",
+        "chips": ["Daily", "3-4x per week", "Weekly", "Other"],
+    },
+    {
         "key": "duration",
-        "question": "How long does it take to clean the whole facility?",
+        "question": "How long does each cleaning session take?",
         "chips": ["1 hr", "2 hr", "4 hr", "Other"],
     },
     {
@@ -92,6 +97,8 @@ IMPORTANT RULES:
 4. Use the exact value provided by the user (e.g., "50000 sqft", not "50,000 square feet")
 5. For ROI inputs, only extract when specific numbers are mentioned
 6. Return an empty answers object {} if no extractable data is found
+7. NEVER reduce answers to "true", "false", "yes", or "no" - always capture the FULL user response with context
+8. Preserve the user's complete phrasing (e.g., "Yes, we have a budget around $5000" NOT "true" or "Yes")
 
 CRITICAL: Company Name vs Company Type Distinction
 - company_name: The actual business/organization name (e.g., "Downtown Pickleball Club", "Smith's Tennis Center", "Joe's Restaurant", "ABC Warehouse"). This is a specific, unique name for the business.

@@ -38,12 +38,20 @@ SPEND_MAP: dict[str, float] = {
     "$10,000+": 12000.0,
 }
 
-# Duration mapping from discovery answer values to monthly hours
+# Duration mapping from discovery answer values to hours per session
 DURATION_MAP: dict[str, float] = {
-    "1 hr": 30.0,   # 1 hour/day * 30 days
-    "2 hr": 60.0,
-    "4 hr": 120.0,
-    "Other": 60.0,  # Default
+    "1 hr": 1.0,
+    "2 hr": 2.0,
+    "4 hr": 4.0,
+    "Other": 2.0,  # Default
+}
+
+# Frequency mapping from discovery answer values to sessions per month
+FREQUENCY_MAP: dict[str, float] = {
+    "Daily": 30.0,
+    "3-4x per week": 14.0,  # ~3.5 * 4 weeks
+    "Weekly": 4.0,
+    "Other": 20.0,  # Default (assume ~5x/week)
 }
 
 
@@ -85,24 +93,53 @@ class ROIService:
             raw_spend = ""
         manual_monthly_spend = SPEND_MAP.get(raw_spend, 4330.0)  # Default fallback
 
-        # Get duration/hours safely
+        # Get duration (hours per session) safely
         duration_answer = answers.get("duration")
         if duration_answer and isinstance(duration_answer, dict):
             raw_duration = str(duration_answer.get("value", ""))
         else:
             raw_duration = ""
 
-        # Try to parse duration - could be "1 hr", "2 hr", etc.
-        manual_monthly_hours = DURATION_MAP.get(raw_duration, 60.0)
+        # Get frequency (sessions per month) safely
+        frequency_answer = answers.get("frequency")
+        if frequency_answer and isinstance(frequency_answer, dict):
+            raw_frequency = str(frequency_answer.get("value", ""))
+        else:
+            raw_frequency = ""
+
+        # Parse duration - hours per cleaning session
+        hours_per_session = DURATION_MAP.get(raw_duration, 2.0)  # Default 2 hours/session
 
         # If duration contains a number, try to extract it
         if raw_duration and raw_duration not in DURATION_MAP:
             try:
                 # Try to extract number from string like "3 hr" or "3"
-                hours_per_day = float(raw_duration.split()[0])
-                manual_monthly_hours = hours_per_day * 30  # Assume daily cleaning
+                hours_per_session = float(raw_duration.split()[0])
             except (ValueError, IndexError):
                 pass
+
+        # Parse frequency - sessions per month
+        sessions_per_month = FREQUENCY_MAP.get(raw_frequency, 20.0)  # Default ~5x/week
+
+        # If frequency contains a number, try to extract it
+        if raw_frequency and raw_frequency not in FREQUENCY_MAP:
+            try:
+                # Handle formats like "2x per week" or "5 times weekly"
+                freq_lower = raw_frequency.lower()
+                if "daily" in freq_lower:
+                    sessions_per_month = 30.0
+                elif "week" in freq_lower:
+                    # Extract number and multiply by 4 weeks
+                    num = float("".join(c for c in raw_frequency if c.isdigit() or c == ".") or "1")
+                    sessions_per_month = num * 4
+                elif "month" in freq_lower:
+                    num = float("".join(c for c in raw_frequency if c.isdigit() or c == ".") or "4")
+                    sessions_per_month = num
+            except (ValueError, IndexError):
+                pass
+
+        # Calculate monthly hours = hours per session * sessions per month
+        manual_monthly_hours = hours_per_session * sessions_per_month
 
         return ROIInputs(
             labor_rate=25.0,  # Default labor rate

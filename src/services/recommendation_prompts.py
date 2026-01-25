@@ -207,18 +207,33 @@ def format_robots_context(robots: list[dict]) -> str:
 
 
 def _get_answer_value(answers: dict, key: str) -> str | None:
-    """Safely extract value from a discovery answer.
+    """Safely extract and sanitize value from a discovery answer.
+
+    Handles boolean-like strings ("true"/"false") by converting to "Yes"/"No".
 
     Args:
         answers: Dictionary of answers.
         key: Answer key to extract.
 
     Returns:
-        The value string or None.
+        The sanitized value string or None.
     """
     answer = answers.get(key)
     if answer is None:
         return None
     if isinstance(answer, dict):
-        return str(answer.get("value", ""))
-    return str(answer) if answer else None
+        value = str(answer.get("value", ""))
+    else:
+        value = str(answer) if answer else ""
+
+    if not value:
+        return None
+
+    # Convert boolean-like strings to readable format
+    value_lower = value.lower().strip()
+    if value_lower == "true":
+        return "Yes"
+    elif value_lower == "false":
+        return "No"
+
+    return value

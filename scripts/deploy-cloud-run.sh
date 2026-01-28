@@ -17,7 +17,7 @@ PROJECT_ID="${3:-$(gcloud config get-value project)}"
 REPOSITORY="${REPOSITORY:-docker-repo}"
 # Use Artifact Registry format: LOCATION-docker.pkg.dev/PROJECT_ID/REPOSITORY/IMAGE
 IMAGE_NAME="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/${SERVICE_NAME}"
-MIN_INSTANCES="${MIN_INSTANCES:-0}"
+MIN_INSTANCES="${MIN_INSTANCES:-1}"
 MAX_INSTANCES="${MAX_INSTANCES:-10}"
 CPU="${CPU:-1}"
 MEMORY="${MEMORY:-512Mi}"

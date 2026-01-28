@@ -17,15 +17,16 @@ from src.services.session_service import SessionService
 def get_session_cookie_config() -> dict:
     """Get session cookie configuration from settings."""
     settings = get_settings()
+    # SameSite=None required for cross-origin requests (frontend on different domain)
+    # But SameSite=None REQUIRES Secure=True or browsers will reject it
+    # Use SameSite=Lax for local development (Secure=False)
+    samesite = "none" if settings.session_cookie_secure else "lax"
     return {
         "key": settings.session_cookie_name,
         "max_age": settings.session_cookie_max_age,
         "httponly": True,
         "secure": settings.session_cookie_secure,
-        # SameSite=None required for cross-origin requests (frontend on different domain)
-        # This allows the cookie to be sent on cross-origin POST requests
-        # Requires Secure=True which is set in production
-        "samesite": "none",
+        "samesite": samesite,
         "path": "/",
     }
 

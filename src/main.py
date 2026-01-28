@@ -16,6 +16,7 @@ from src.api.routes import (
     companies,
     conversations,
     discovery,
+    floor_plans,
     health,
     invitations,
     profiles,
@@ -144,6 +145,9 @@ def create_app() -> FastAPI:
 
     # Robot catalog routes
     api_v1_router.include_router(robots.router)
+
+    # Floor plan analysis routes
+    api_v1_router.include_router(floor_plans.router)
 
     # ROI and Greenlight routes
     api_v1_router.include_router(roi_router)

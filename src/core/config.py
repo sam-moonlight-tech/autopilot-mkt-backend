@@ -78,7 +78,7 @@ class Settings(BaseSettings):
     token_budget_authenticated_daily: int = Field(default=250000, description="Max tokens per day for authenticated users")
 
     # Request Size Limits
-    max_request_body_size: int = Field(default=65536, description="Max request body size in bytes (64KB)")
+    max_request_body_size: int = Field(default=598160, description="Max request body size in bytes (64KB)")
     max_message_length: int = Field(default=4000, description="Max message content length in characters")
 
     # LLM Recommendations

@@ -34,7 +34,7 @@ class CheckoutService:
         profile_id: UUID | None = None,
         session_id: UUID | None = None,
         customer_email: str | None = None,
-        is_test_account: bool = False,
+        is_test_account: bool | None = None,
     ) -> dict[str, Any]:
         """Create a Stripe Checkout Session and pending order.
 
@@ -45,7 +45,7 @@ class CheckoutService:
             profile_id: Optional profile ID for authenticated users.
             session_id: Optional session ID for anonymous users.
             customer_email: Optional pre-fill email.
-            is_test_account: If True, use Stripe test mode (test keys and test price IDs).
+            is_test_account: If True, use Stripe test mode. If None, auto-detect from environment.
 
         Returns:
             dict: Contains checkout_url, order_id, stripe_session_id, is_test_mode.
@@ -54,13 +54,17 @@ class CheckoutService:
             ValueError: If product not found or inactive, or Stripe not configured.
             Exception: If Stripe API call fails.
         """
+        # Resolve test mode: explicit flag > environment-based detection
+        settings = get_settings()
+        use_test_mode = is_test_account if is_test_account is not None else settings.is_stripe_test_mode
+
         # Get appropriate Stripe API key
-        stripe_api_key = get_stripe_api_key(use_test_mode=is_test_account)
+        stripe_api_key = get_stripe_api_key(use_test_mode=use_test_mode)
         if not stripe_api_key:
             raise ValueError("Stripe is not configured. Please set STRIPE_SECRET_KEY environment variable.")
 
         # Get product with appropriate Stripe IDs (test or production)
-        robot = await self.robot_service.get_robot_with_stripe_ids(product_id, use_test_mode=is_test_account)
+        robot = await self.robot_service.get_robot_with_stripe_ids(product_id, use_test_mode=use_test_mode)
         if not robot:
             raise ValueError("Product not found")
 
@@ -105,6 +109,7 @@ class CheckoutService:
             # Create Stripe Checkout Session
             checkout_params: dict[str, Any] = {
                 "mode": "subscription",
+                "payment_method_types": ["card", "us_bank_account"],
                 "line_items": [
                     {
                         "price": robot["stripe_lease_price_id"],
@@ -116,7 +121,7 @@ class CheckoutService:
                 "metadata": {
                     "order_id": str(order_id),
                     "session_id": str(session_id) if session_id else "",
-                    "is_test_mode": "true" if is_test_account else "false",
+                    "is_test_mode": "true" if use_test_mode else "false",
                 },
             }
 
@@ -146,14 +151,14 @@ class CheckoutService:
             # Update order with Stripe session ID and test mode flag
             self.client.table("orders").update({
                 "stripe_checkout_session_id": stripe_session.id,
-                "metadata": {"is_test_mode": is_test_account},
+                "metadata": {"is_test_mode": use_test_mode},
             }).eq("id", order_id).execute()
 
             return {
                 "checkout_url": stripe_session.url,
                 "order_id": UUID(order_id),
                 "stripe_session_id": stripe_session.id,
-                "is_test_mode": is_test_account,
+                "is_test_mode": use_test_mode,
             }
 
         except stripe.error.StripeError as e:
@@ -166,6 +171,10 @@ class CheckoutService:
 
     async def handle_checkout_completed(self, event: dict[str, Any]) -> dict[str, Any]:
         """Process checkout.session.completed webhook event.
+
+        For card payments (payment_status="paid"), marks the order as completed immediately.
+        For ACH/bank transfers (payment_status="unpaid"), marks the order as payment_pending
+        since funds take ~4 business days to settle.
 
         Args:
             event: Stripe webhook event data.
@@ -185,11 +194,63 @@ class CheckoutService:
         if customer_details:
             customer_email = customer_details.get("email")
 
+        payment_status = session.get("payment_status", "")
+
+        if payment_status == "paid":
+            # Card or instant payment — funds available immediately
+            update_data: dict[str, Any] = {
+                "status": "completed",
+                "stripe_customer_id": session.get("customer"),
+                "stripe_subscription_id": session.get("subscription"),
+                "customer_email": customer_email,
+                "completed_at": datetime.now(timezone.utc).isoformat(),
+            }
+            log_status = "completed"
+        else:
+            # ACH / delayed payment — authorized but funds not yet settled
+            update_data = {
+                "status": "payment_pending",
+                "stripe_customer_id": session.get("customer"),
+                "stripe_subscription_id": session.get("subscription"),
+                "customer_email": customer_email,
+            }
+            log_status = "payment_pending"
+
+        response = (
+            self.client.table("orders")
+            .update(update_data)
+            .eq("id", order_id)
+            .execute()
+        )
+
+        if response.data:
+            logger.info("Order %s marked as %s", order_id, log_status)
+            return response.data[0]
+
+        logger.warning("Order not found for completion: %s", order_id)
+        return {}
+
+    async def handle_async_payment_succeeded(self, event: dict[str, Any]) -> dict[str, Any]:
+        """Process checkout.session.async_payment_succeeded webhook event.
+
+        Called when an ACH/bank transfer payment settles successfully (~4 business days).
+        Transitions the order from payment_pending to completed.
+
+        Args:
+            event: Stripe webhook event data.
+
+        Returns:
+            dict: Updated order data.
+        """
+        session = event["data"]["object"]
+        order_id = session.get("metadata", {}).get("order_id")
+
+        if not order_id:
+            logger.warning("Webhook missing order_id in metadata: %s", session.get("id"))
+            return {}
+
         update_data = {
             "status": "completed",
-            "stripe_customer_id": session.get("customer"),
-            "stripe_subscription_id": session.get("subscription"),
-            "customer_email": customer_email,
             "completed_at": datetime.now(timezone.utc).isoformat(),
         }
 
@@ -201,10 +262,48 @@ class CheckoutService:
         )
 
         if response.data:
-            logger.info("Order %s marked as completed", order_id)
+            logger.info("Order %s async payment succeeded, marked as completed", order_id)
             return response.data[0]
 
-        logger.warning("Order not found for completion: %s", order_id)
+        logger.warning("Order not found for async payment success: %s", order_id)
+        return {}
+
+    async def handle_async_payment_failed(self, event: dict[str, Any]) -> dict[str, Any]:
+        """Process checkout.session.async_payment_failed webhook event.
+
+        Called when an ACH/bank transfer payment fails (insufficient funds, closed account, etc.).
+        Transitions the order from payment_pending to cancelled.
+
+        Args:
+            event: Stripe webhook event data.
+
+        Returns:
+            dict: Updated order data.
+        """
+        session = event["data"]["object"]
+        order_id = session.get("metadata", {}).get("order_id")
+
+        if not order_id:
+            logger.warning("Webhook missing order_id in metadata: %s", session.get("id"))
+            return {}
+
+        update_data: dict[str, Any] = {
+            "status": "cancelled",
+            "metadata": {"failure_reason": "async_payment_failed"},
+        }
+
+        response = (
+            self.client.table("orders")
+            .update(update_data)
+            .eq("id", order_id)
+            .execute()
+        )
+
+        if response.data:
+            logger.info("Order %s async payment failed, marked as cancelled", order_id)
+            return response.data[0]
+
+        logger.warning("Order not found for async payment failure: %s", order_id)
         return {}
 
     async def handle_checkout_expired(self, event: dict[str, Any]) -> None:

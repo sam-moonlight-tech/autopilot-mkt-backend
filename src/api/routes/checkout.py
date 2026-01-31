@@ -17,16 +17,17 @@ from src.services.profile_service import ProfileService
 router = APIRouter(prefix="/checkout", tags=["checkout"])
 
 
-async def _get_profile_for_auth(auth: AuthContext) -> tuple[UUID | None, bool]:
+async def _get_profile_for_auth(auth: AuthContext) -> tuple[UUID | None, bool | None]:
     """Get the profile ID and test account flag for an authenticated user.
 
     Creates profile if needed.
 
     Returns:
-        tuple: (profile_id, is_test_account)
+        tuple: (profile_id, is_test_account) - is_test_account is None for
+               anonymous sessions so checkout falls through to environment-based detection.
     """
     if not auth.is_authenticated or not auth.user:
-        return None, False
+        return None, None
     service = ProfileService()
     profile = await service.get_or_create_profile(auth.user.user_id, auth.user.email)
     return UUID(profile["id"]), profile.get("is_test_account", False)

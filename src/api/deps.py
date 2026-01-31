@@ -153,8 +153,11 @@ OptionalUser = Annotated[UserContext | None, Depends(get_optional_user)]
 # Cookie utility functions
 
 
-def get_session_cookie(request: Request) -> str | None:
-    """Extract session token from cookie.
+def get_session_token(request: Request) -> str | None:
+    """Extract session token from X-Session-Token header or cookie.
+
+    Checks header first (works when third-party cookies are blocked),
+    then falls back to cookie.
 
     Args:
         request: FastAPI request object.
@@ -162,6 +165,12 @@ def get_session_cookie(request: Request) -> str | None:
     Returns:
         str | None: The session token or None if not present.
     """
+    # Prefer header (works even when browsers block third-party cookies)
+    header_token = request.headers.get("x-session-token")
+    if header_token:
+        return header_token
+
+    # Fall back to cookie
     config = get_session_cookie_config()
     return request.cookies.get(config["key"])
 
@@ -234,8 +243,8 @@ async def get_current_user_or_session(
                 # Invalid JWT - fall through to session handling
                 pass
 
-    # Try session cookie
-    session_token = get_session_cookie(request)
+    # Try session token from header or cookie
+    session_token = get_session_token(request)
     session_service = SessionService()
 
     if session_token:
@@ -253,6 +262,8 @@ async def get_current_user_or_session(
     # No valid auth - create new session
     session_data, new_token = await session_service.create_session()
     set_session_cookie(response, new_token)
+    # Also expose token via response header for when cookies are blocked
+    response.headers["x-session-token"] = new_token
 
     return AuthContext(
         session=SessionContext(
@@ -292,8 +303,8 @@ async def get_required_user_or_session(
             except AuthError:
                 pass
 
-    # Try session cookie
-    session_token = get_session_cookie(request)
+    # Try session token from header or cookie
+    session_token = get_session_token(request)
     if session_token:
         session_service = SessionService()
         if await session_service.is_session_valid(session_token):

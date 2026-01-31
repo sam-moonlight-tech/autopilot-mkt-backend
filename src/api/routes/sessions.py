@@ -9,7 +9,7 @@ from src.api.deps import (
     CurrentUser,
     DualAuth,
     clear_session_cookie,
-    get_session_cookie,
+    get_session_token,
     set_session_cookie,
 )
 from src.schemas.session import SessionClaimResponse, SessionResponse, SessionUpdate
@@ -54,8 +54,9 @@ async def create_session(response: Response) -> SessionResponse:
 
     set_session_cookie(response, token)
 
-    # New sessions have no answers, so ready_for_roi is always False
-    return SessionResponse(**session_data, ready_for_roi=False)
+    # Return token in body so frontend can use X-Session-Token header
+    # when third-party cookies are blocked by the browser
+    return SessionResponse(**session_data, session_token=token, ready_for_roi=False)
 
 
 @router.get(
@@ -189,12 +190,12 @@ async def claim_session(
         HTTPException: 400 if no session cookie or already claimed.
         HTTPException: 404 if session not found.
     """
-    # Get session from cookie
-    session_token = get_session_cookie(request)
+    # Get session from header or cookie
+    session_token = get_session_token(request)
     if not session_token:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No session cookie found. Nothing to claim.",
+            detail="No session token found. Nothing to claim.",
         )
 
     checkout_service = CheckoutService()

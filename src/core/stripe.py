@@ -36,11 +36,11 @@ def get_stripe() -> stripe:
     return stripe
 
 
-def get_stripe_api_key(use_test_mode: bool = False) -> str:
+def get_stripe_api_key(use_test_mode: bool | None = None) -> str:
     """Get the appropriate Stripe API key.
 
     Args:
-        use_test_mode: If True, return test API key (for test accounts in production).
+        use_test_mode: If True, return test API key. If None, auto-detect from environment.
 
     Returns:
         str: The Stripe API key to use.
@@ -50,6 +50,9 @@ def get_stripe_api_key(use_test_mode: bool = False) -> str:
         stripe_secret_key_test for Stripe operations.
     """
     settings = get_settings()
+    # Auto-detect from environment if not specified
+    if use_test_mode is None:
+        use_test_mode = settings.is_stripe_test_mode
     if use_test_mode and settings.stripe_secret_key_test:
         return settings.stripe_secret_key_test
     return settings.stripe_secret_key

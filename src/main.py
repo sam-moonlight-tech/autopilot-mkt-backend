@@ -111,6 +111,7 @@ def create_app() -> FastAPI:
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
+        expose_headers=["x-session-token"],
     )
 
     # Add error handler middleware (outermost - catches all errors)

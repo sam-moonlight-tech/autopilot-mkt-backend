@@ -24,7 +24,9 @@ async def stripe_webhook(request: Request) -> dict[str, str]:
     The Stripe signature is verified before processing.
 
     Handles:
-    - checkout.session.completed: Updates order to completed status
+    - checkout.session.completed: Updates order to completed (card) or payment_pending (ACH)
+    - checkout.session.async_payment_succeeded: ACH payment settled, marks order completed
+    - checkout.session.async_payment_failed: ACH payment failed, marks order cancelled
     - checkout.session.expired: Updates order to cancelled status
 
     Args:
@@ -76,6 +78,14 @@ async def stripe_webhook(request: Request) -> dict[str, str]:
     if event_type == "checkout.session.completed":
         await service.handle_checkout_completed(event)
         logger.info("Processed checkout.session.completed")
+
+    elif event_type == "checkout.session.async_payment_succeeded":
+        await service.handle_async_payment_succeeded(event)
+        logger.info("Processed checkout.session.async_payment_succeeded")
+
+    elif event_type == "checkout.session.async_payment_failed":
+        await service.handle_async_payment_failed(event)
+        logger.info("Processed checkout.session.async_payment_failed")
 
     elif event_type == "checkout.session.expired":
         await service.handle_checkout_expired(event)

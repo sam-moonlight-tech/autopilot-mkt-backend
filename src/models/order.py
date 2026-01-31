@@ -6,7 +6,7 @@ from uuid import UUID
 
 
 # Order status enum values matching database enum
-OrderStatus = Literal["pending", "processing", "completed", "cancelled", "refunded"]
+OrderStatus = Literal["pending", "payment_pending", "processing", "completed", "cancelled", "refunded"]
 
 
 class OrderLineItem(TypedDict):

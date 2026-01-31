@@ -97,6 +97,7 @@ class SessionResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID = Field(description="Session unique identifier")
+    session_token: str | None = Field(default=None, description="Session token for X-Session-Token header (use when cookies are blocked)")
     current_question_index: int = Field(description="Current question index in discovery flow")
     phase: str = Field(description="Current session phase")
     answers: dict[str, DiscoveryAnswerSchema] = Field(default_factory=dict, description="Discovery answers")

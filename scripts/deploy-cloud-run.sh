@@ -74,7 +74,7 @@ gcloud builds submit --tag "${IMAGE_NAME}" --project "${PROJECT_ID}" --region="$
 SECRET_VARIABLES="SUPABASE_URL|SUPABASE_SECRET_KEY|SUPABASE_SIGNING_KEY_JWK|OPENAI_API_KEY|PINECONE_API_KEY|PINECONE_ENVIRONMENT|STRIPE_SECRET_KEY|STRIPE_WEBHOOK_SECRET|STRIPE_SECRET_KEY_TEST|STRIPE_WEBHOOK_SECRET_TEST|RESEND_API_KEY"
 
 # Build base environment variables list (only non-secret vars)
-BASE_ENV_VARS="APP_ENV=production,DEBUG=false,HOST=0.0.0.0"
+BASE_ENV_VARS="APP_ENV=production,DEBUG=false,HOST=0.0.0.0,FRONTEND_URL=https://autopilot-marketplace.com"
 
 # Variables to handle separately (values with commas need special handling)
 CORS_ORIGINS_VALUE=""
@@ -132,7 +132,7 @@ else
       
       # Add to env vars if it's one of our required variables
       case "$key" in
-        SUPABASE_URL|SUPABASE_SECRET_KEY|SUPABASE_SIGNING_KEY_JWK|OPENAI_API_KEY|PINECONE_API_KEY|PINECONE_ENVIRONMENT|OPENAI_MODEL|PINECONE_INDEX_NAME|EMBEDDING_MODEL|MAX_CONTEXT_MESSAGES|AUTH_REDIRECT_URL|STRIPE_SECRET_KEY|STRIPE_WEBHOOK_SECRET|STRIPE_PUBLISHABLE_KEY|STRIPE_SECRET_KEY_TEST|STRIPE_WEBHOOK_SECRET_TEST|RESEND_API_KEY)
+        SUPABASE_URL|SUPABASE_SECRET_KEY|SUPABASE_SIGNING_KEY_JWK|OPENAI_API_KEY|PINECONE_API_KEY|PINECONE_ENVIRONMENT|OPENAI_MODEL|PINECONE_INDEX_NAME|EMBEDDING_MODEL|MAX_CONTEXT_MESSAGES|AUTH_REDIRECT_URL|STRIPE_SECRET_KEY|STRIPE_WEBHOOK_SECRET|STRIPE_PUBLISHABLE_KEY|STRIPE_SECRET_KEY_TEST|STRIPE_WEBHOOK_SECRET_TEST|RESEND_API_KEY|EMAIL_FROM_ADDRESS)
           ENV_VARS="${ENV_VARS},${key}=${value}"
           ;;
         CORS_ORIGINS)
@@ -166,13 +166,14 @@ if [ -n "${CORS_ORIGINS_VALUE}" ]; then
 APP_ENV: production
 DEBUG: "false"
 HOST: 0.0.0.0
+FRONTEND_URL: "https://autopilot-marketplace.com"
 EOF
-  
+
   # Add AUTH_REDIRECT_URL if we have it (not a secret)
   if [ -n "${AUTH_REDIRECT_URL_VALUE}" ]; then
     echo "AUTH_REDIRECT_URL: \"${AUTH_REDIRECT_URL_VALUE}\"" >> "${ENV_VARS_FILE}"
   fi
-  
+
   # Add CORS_ORIGINS with proper YAML quoting (not a secret)
   echo "CORS_ORIGINS: \"${CORS_ORIGINS_VALUE}\"" >> "${ENV_VARS_FILE}"
   
@@ -184,10 +185,10 @@ EOF
     for var in "${VARS[@]}"; do
       key=$(echo "$var" | cut -d'=' -f1)
       value=$(echo "$var" | cut -d'=' -f2-)
-      # Skip if already added or if it's a secret variable (safety check)
+      # Skip if already added, hardcoded, or if it's a secret variable (safety check)
       if [ "$key" != "APP_ENV" ] && [ "$key" != "DEBUG" ] && [ "$key" != "HOST" ] && \
-         [ "$key" != "AUTH_REDIRECT_URL" ] && [ "$key" != "CORS_ORIGINS" ] && \
-         ! is_secret_var "$key"; then
+         [ "$key" != "FRONTEND_URL" ] && [ "$key" != "AUTH_REDIRECT_URL" ] && \
+         [ "$key" != "CORS_ORIGINS" ] && ! is_secret_var "$key"; then
         echo "${key}: \"${value}\"" >> "${ENV_VARS_FILE}"
       fi
     done
